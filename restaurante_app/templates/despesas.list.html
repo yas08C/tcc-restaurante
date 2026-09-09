@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Despesas Fixas{% endblock %}
+{% block content %}
+<h1>Despesas Fixas</h1>
+<a href="{% url 'despesa_create' %}" class="btn btn-success">+ Nova Despesa</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th>Mês</th>
+            <th>Ano</th>
+            <th>Valor</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for obj in despesas %}
+        <tr>
+            <td>{{ obj.get_tipo_display }}</td>
+            <td>{{ obj.get_mes_display }}</td>
+            <td>{{ obj.ano }}</td>
+            <td>R$ {{ obj.valor }}</td>
+            <td>
+                <a href="{% url 'despesa_update' obj.pk %}" class="btn btn-primary">Editar</a>
+                <a href="{% url 'despesa_delete' obj.pk %}" class="btn btn-danger">Excluir</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Nenhuma despesa cadastrada.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2 style="margin-top: 30px;">Todas as Despesas do Restaurante (por mês)</h2>
+<p style="margin-bottom: 15px;">
+    Aluguel e contas cadastrados aqui + compra de produtos já somada, conectada
+    diretamente com <a href="{% url 'fornecedor_list' %}">Fornecedores</a>.
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Mês/Ano</th>
+            <th>Aluguel</th>
+            <th>Água</th>
+            <th>Energia</th>
+            <th>Outros</th>
+            <th>Produtos (Fornecedores)</th>
+            <th>Total do mês</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in resumo_mensal %}
+        <tr>
+            <td>{{ m.mes_nome }}/{{ m.ano }}</td>
+            <td>R$ {{ m.aluguel }}</td>
+            <td>R$ {{ m.agua }}</td>
+            <td>R$ {{ m.energia }}</td>
+            <td>R$ {{ m.outros }}</td>
+            <td>R$ {{ m.produtos }}</td>
+            <td><strong>R$ {{ m.total }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">Nenhuma despesa registrada ainda.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p style="margin-top: 15px;"><a href="{% url 'financeiro' %}" class="btn btn-primary">Voltar ao Financeiro</a></p>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'restaurante/css/temperatura.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1>Monitoramento de Temperatura</h1>
+
+<div class="grid-zonas">
+    {% for zona in zonas %}
+    <table class="tabela-zona {% if zona.em_alerta %}alerta{% endif %}">
+        <caption>Zona {{ zona.zona }}</caption>
+        <tbody>
+            <tr>
+                <th>Máxima</th>
+                <td>{{ zona.temp_maxima }} °C</td>
+            </tr>
+            <tr class="linha-atual">
+                <th>Atual</th>
+                <td>
+                    {{ zona.temp_atual|default:"—" }} °C
+                    {% if zona.em_alerta %}
+                        <span class="icone-alerta" title="Fora da faixa segura">⚠️</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Mínima</th>
+                <td>{{ zona.temp_minima }} °C</td>
+            </tr>
+        </tbody>
+    </table>
+    {% empty %}
+    <p>Nenhuma zona cadastrada ainda para este restaurante.</p>
+    {% endfor %}
+</div>
+{% endblock %}

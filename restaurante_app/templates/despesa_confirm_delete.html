@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Excluir Despesa{% endblock %}
+{% block content %}
+<h1>Excluir Despesa</h1>
+<p>Tem certeza que deseja excluir "{{ despesa.get_tipo_display }} - {{ despesa.get_mes_display }}/{{ despesa.ano }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Confirmar exclusão</button>
+    <a href="{% url 'despesa_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}

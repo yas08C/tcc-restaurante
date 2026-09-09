@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Financeiro{% endblock %}
+{% block content %}
+<h1>Financeiro por Mês</h1>
+<a href="{% url 'despesa_list' %}" class="btn btn-primary" style="margin-bottom: 15px; display: inline-block;">
+    Gerenciar despesas fixas
+</a>
+
+{% if resumo_mensal %}
+<div style="max-width: 700px; margin-bottom: 30px;">
+    <canvas id="graficoFinanceiro"></canvas>
+</div>
+{% endif %}
+
+{% for m in resumo_mensal %}
+<div style="margin-bottom: 30px; {% if m.is_mes_atual %}border: 2px solid #d4a94a; border-radius: 6px; padding: 10px;{% endif %}">
+    <h2>
+        {{ m.mes_nome }}/{{ m.ano }}
+        {% if m.is_mes_atual %}<span class="badge badge-warning">Mês atual</span>{% endif %}
+    </h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Indicador</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Total gasto em produtos no mês</td>
+                <td>R$ {{ m.total_gasto }}</td>
+            </tr>
+            <tr>
+                <td>Aluguel fixo do mês</td>
+                <td>R$ {{ m.aluguel }}</td>
+            </tr>
+            <tr>
+                <td>Total de contas (água, energia, etc)</td>
+                <td>R$ {{ m.total_contas }}</td>
+            </tr>
+            <tr>
+                <td><strong>Total geral de despesas (produtos + aluguel + contas)</strong></td>
+                <td><strong>R$ {{ m.total_geral_despesas }}</strong></td>
+            </tr>
+            <tr>
+                <td>Total ganho em reservas pagas no mês</td>
+                <td>R$ {{ m.total_reservas }}</td>
+            </tr>
+            <tr>
+                <td>Reservas pagas no mês</td>
+                <td>{{ m.qtd_reservas_pagas }}</td>
+            </tr>
+            <tr>
+                <td>Total de pessoas (reservas pagas)</td>
+                <td>{{ m.total_pessoas }}</td>
+            </tr>
+            <tr>
+                <td>Valor por pessoa</td>
+                <td>R$ {{ m.valor_por_pessoa }}</td>
+            </tr>
+            <tr>
+                <td><strong>Saldo do mês (reservas − despesas)</strong></td>
+                <td>
+                    <strong style="color: {% if m.saldo < 0 %}#e05c5c{% else %}#7bc47f{% endif %};">
+                        R$ {{ m.saldo }}
+                    </strong>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% empty %}
+<p>Nenhum dado financeiro registrado ainda.</p>
+{% endfor %}
+
+{% if resumo_mensal %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+    // resumo_mensal vem ordenado do mais recente pro mais antigo; invertemos
+    // para o gráfico mostrar em ordem cronológica (mais antigo → mais recente).
+    const dadosMeses = [
+        {% for m in resumo_mensal %}
+        {
+            label: "{{ m.mes_nome }}/{{ m.ano }}",
+            despesas: {{ m.total_geral_despesas }},
+            receita: {{ m.total_reservas }},
+        },
+        {% endfor %}
+    ].reverse();
+
+    const ctx = document.getElementById('graficoFinanceiro');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dadosMeses.map(function (m) { return m.label; }),
+            datasets: [
+                {
+                    label: 'Despesas totais (R$)',
+                    data: dadosMeses.map(function (m) { return m.despesas; }),
+                    backgroundColor: 'rgba(224, 92, 92, 0.7)',
+                },
+                {
+                    label: 'Receita de reservas (R$)',
+                    data: dadosMeses.map(function (m) { return m.receita; }),
+                    backgroundColor: 'rgba(123, 196, 127, 0.7)',
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+</script>
+{% endif %}
+{% endblock %}

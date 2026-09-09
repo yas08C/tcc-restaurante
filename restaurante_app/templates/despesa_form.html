@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Despesa Fixa{% endblock %}
+{% block content %}
+<h1>{% if form.instance.pk %}Editar Despesa{% else %}Nova Despesa{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="{% url 'despesa_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}

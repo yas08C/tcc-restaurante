@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Fornecedor{% endblock %}
+{% block content %}
+<h1>{% if form.instance.pk %}Editar Compra{% else %}Nova Compra{% endif %}</h1>
+<p style="margin-bottom: 15px;">O preço total é calculado automaticamente: quantidade já cadastrada no estoque do produto × preço da unidade.</p>
+ 
+<form method="post" id="form-fornecedor">
+    {% csrf_token %}
+    {{ form.as_p }}
+ 
+    <p><strong>Preço total: <span id="preco-total-preview">R$ 0,00</span></strong></p>
+ 
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="{% url 'fornecedor_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+ 
+{{ produtos_qtd|json_script:"produtos-qtd-data" }}
+ 
+<script>
+    (function () {
+        var produtosQtd = JSON.parse(document.getElementById('produtos-qtd-data').textContent);
+        var produtoSelect = document.getElementById('id_produto');
+        var precoUnidadeInput = document.getElementById('id_preco_unidade');
+        var preview = document.getElementById('preco-total-preview');
+ 
+        function atualizarTotal() {
+            var quantidade = produtosQtd[produtoSelect.value] || 0;
+            var precoUnidade = parseFloat(precoUnidadeInput.value.replace(',', '.')) || 0;
+            var total = quantidade * precoUnidade;
+            preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+        }
+ 
+        produtoSelect.addEventListener('change', atualizarTotal);
+        precoUnidadeInput.addEventListener('input', atualizarTotal);
+        atualizarTotal();
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema do Restaurante{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        #banner-alertas {
+            display: none;
+            background-color: #c0392b;
+            color: #fff;
+            padding: 10px 16px;
+            text-align: center;
+            font-weight: bold;
+            cursor: default;
+        }
+        #banner-alertas.destaque {
+            animation: piscar-alerta 0.8s 4;
+        }
+        @keyframes piscar-alerta {
+            0%, 100% { background-color: #c0392b; }
+            50% { background-color: #e74c3c; }
+        }
+    </style>
+</head>
+<body>
+
+    {% if user.is_authenticated %}
+    <div id="banner-alertas"><span id="texto-banner-alertas"></span></div>
+    {% endif %}
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <a href="{% url 'home' %}">
+                <img src="{% static 'urso-sushi.png' %}" alt="Ursinho" style="height: 32px; vertical-align: middle; margin-right: 6px;">
+                Sistema do Restaurante
+            </a>
+        </div>
+        {% if user.is_authenticated %}
+        <nav class="navbar-links">
+            <a href="{% url 'home' %}">Início</a>
+            <a href="{% url 'produto_list' %}">Estoque</a>
+            <a href="{% url 'estoque_historico' %}">Histórico de Estoque</a>
+            <a href="{% url 'fornecedor_list' %}">Fornecedores</a>
+            <a href="{% url 'prato_list' %}">Cardápio</a>
+            <a href="{% url 'reserva_list' %}">Agendamento</a>
+            <a href="{% url 'reserva_create' %}">Reservar Mesa</a>
+            <a href="{% url 'temperatura' %}">Temperatura</a>
+             <a href="{% url 'financeiro' %}">Financeiro</a>
+            <a href="{% url 'logout' %}">Sair ({{ user.username }})</a>
+        </nav>
+        {% endif %}
+    </header>
+
+    <main class="container">
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>&copy; {% now "Y" %} Sistema do Restaurante — Todos os direitos reservados</p>
+        <span class="autoria">@TrabalhoTCC</span>
+    </footer>
+
+    {% if user.is_authenticated %}
+    <script>
+        let ultimoTotalNotificacoes = 0;
+        let audioContextLiberado = false;
+        const somAlerta = new Audio("{% static 'audio/alerta.wav' %}");
+        somAlerta.volume = 0.5;
+
+        // Navegadores bloqueiam áudio automático até o usuário interagir com a
+        // página pelo menos uma vez. Este listener "libera" o som no primeiro
+        // clique/tecla, sem precisar de nenhum botão específico.
+        function liberarAudio() {
+            audioContextLiberado = true;
+            document.removeEventListener('click', liberarAudio);
+            document.removeEventListener('keydown', liberarAudio);
+        }
+        document.addEventListener('click', liberarAudio);
+        document.addEventListener('keydown', liberarAudio);
+
+        function checarNotificacoes() {
+            fetch("{% url 'notificacoes_ativas' %}")
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    const banner = document.getElementById('banner-alertas');
+                    const texto = document.getElementById('texto-banner-alertas');
+                    const total = data.notificacoes.length;
+
+                    if (total > 0) {
+                        banner.style.display = 'block';
+                        texto.textContent = data.notificacoes
+                            .map(function (n) { return n.mensagem; })
+                            .join('   |   ');
+
+                        if (total > ultimoTotalNotificacoes) {
+                            banner.classList.remove('destaque');
+                            // força o navegador a "reiniciar" a animação
+                            void banner.offsetWidth;
+                            banner.classList.add('destaque');
+
+                            if (audioContextLiberado) {
+                                somAlerta.currentTime = 0;
+                                somAlerta.play().catch(function () {
+                                    // reproduzir pode falhar silenciosamente em
+                                    // alguns navegadores; não é crítico
+                                });
+                            }
+                        }
+                    } else {
+                        banner.style.display = 'none';
+                        banner.classList.remove('destaque');
+                    }
+                    ultimoTotalNotificacoes = total;
+                })
+                .catch(function (erro) {
+                    console.error('Erro ao checar notificações:', erro);
+                });
+        }
+
+        checarNotificacoes();
+        setInterval(checarNotificacoes, 5000); // verifica a cada 5 segundos
+    </script>
+    {% endif %}
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Excluir Registro{% endblock %}
+{% block content %}
+<h1>Excluir Registro de Compra</h1>
+<p>Tem certeza que deseja excluir a compra de "{{ fornecedor.produto }}" do fornecedor "{{ fornecedor.nome_fornecedor }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Confirmar exclusão</button>
+    <a href="{% url 'fornecedor_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}

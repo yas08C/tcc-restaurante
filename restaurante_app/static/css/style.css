@@ -1,0 +1,348 @@
+:root {
+    /* Nova Paleta de Cores */
+    --preto: #121212;
+    --cinza-escuro: #1E1E1E;
+    --cinza-medio: #2D2D2D;
+    --cinza-borda: #404040;
+    --cinza-claro: #E0E0E0;
+    --branco-ornamentado: #FAFAFA;
+    --branco-puro: #FFFFFF;
+    --salmao: #FA8072;
+    --salmao-claro: #FFA07A;
+    --vermelho-principal: #7F0000;
+    --vermelho-hover: #990000;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Georgia', 'Segoe UI', Arial, sans-serif;
+    background-color: var(--preto);
+    color: var(--branco-ornamentado);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    
+    /* Fundo Geométrico Sutil (Asanoha) adaptado para tons de Cinza e Salmão */
+    background-image:
+        linear-gradient(30deg, rgba(250, 128, 114, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(250, 128, 114, 0.05) 87.5%, rgba(250, 128, 114, 0.05)),
+        linear-gradient(150deg, rgba(250, 128, 114, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(250, 128, 114, 0.05) 87.5%, rgba(250, 128, 114, 0.05)),
+        linear-gradient(30deg, rgba(250, 128, 114, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(250, 128, 114, 0.05) 87.5%, rgba(250, 128, 114, 0.05)),
+        linear-gradient(150deg, rgba(250, 128, 114, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(250, 128, 114, 0.05) 87.5%, rgba(250, 128, 114, 0.05)),
+        linear-gradient(60deg, rgba(255, 255, 255, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(255, 255, 255, 0.03) 75%, rgba(255, 255, 255, 0.03)),
+        linear-gradient(60deg, rgba(255, 255, 255, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(255, 255, 255, 0.03) 75%, rgba(255, 255, 255, 0.03));
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+}
+
+/* Pétalas de Sakura Flutuantes (Tons Salmão e Branco) */
+.sakura-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.sakura-layer span {
+    position: absolute;
+    top: -10%;
+    display: block;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle at 30% 30%, var(--branco-puro), var(--salmao) 70%);
+    border-radius: 70% 0 70% 0;
+    opacity: 0.75;
+    animation: cair linear infinite;
+    filter: drop-shadow(0 0 2px rgba(250, 128, 114, 0.5));
+}
+
+.sakura-layer span:nth-child(1) { left: 6%;  width: 8px;  height: 8px;  animation-duration: 14s; animation-delay: 0s; }
+.sakura-layer span:nth-child(2) { left: 18%; width: 12px; height: 12px; animation-duration: 18s; animation-delay: 2s; }
+.sakura-layer span:nth-child(3) { left: 32%; width: 7px;  height: 7px;  animation-duration: 12s; animation-delay: 4s; }
+.sakura-layer span:nth-child(4) { left: 47%; width: 10px; height: 10px; animation-duration: 20s; animation-delay: 1s; }
+.sakura-layer span:nth-child(5) { left: 61%; width: 9px;  height: 9px;  animation-duration: 16s; animation-delay: 5s; }
+.sakura-layer span:nth-child(6) { left: 74%; width: 11px; height: 11px; animation-duration: 22s; animation-delay: 3s; }
+.sakura-layer span:nth-child(7) { left: 85%; width: 8px;  height: 8px;  animation-duration: 15s; animation-delay: 6s; }
+.sakura-layer span:nth-child(8) { left: 93%; width: 10px; height: 10px; animation-duration: 19s; animation-delay: 7s; }
+
+@keyframes cair {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.7; }
+    90%  { opacity: 0.7; }
+    100% { transform: translate(40px, 110vh) rotate(360deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sakura-layer span,
+    .navbar-brand a::after,
+    .tab-card,
+    .btn { animation: none !important; transition: none !important; }
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    background-color: var(--cinza-escuro);
+    border-bottom: 2px solid var(--vermelho-principal);
+    padding: 15px 30px;
+    position: relative;
+    z-index: 2;
+    animation: surgir 0.6s ease-out;
+}
+
+.navbar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--salmao), transparent);
+    opacity: 0.8;
+}
+
+.navbar-brand a {
+    color: var(--salmao);
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-decoration: none;
+    text-transform: uppercase;
+    position: relative;
+    transition: letter-spacing 0.3s ease, text-shadow 0.3s ease;
+}
+
+.navbar-brand a:hover {
+    letter-spacing: 2px;
+    text-shadow: 0 0 12px rgba(250, 128, 114, 0.6);
+}
+
+.navbar-links a {
+    color: var(--branco-ornamentado);
+    text-decoration: none;
+    margin-left: 20px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    position: relative;
+    transition: color 0.25s ease;
+}
+
+.navbar-links a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 1px;
+    background-color: var(--salmao);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.navbar-links a:hover { color: var(--salmao); border-color: transparent; }
+.navbar-links a:hover::before { transform: scaleX(1); }
+
+/* Container Principal */
+.container {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 25px 30px;
+    background-color: var(--cinza-escuro);
+    border: 1px solid var(--cinza-borda);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+    position: relative;
+    z-index: 1;
+    animation: surgir 0.7s ease-out;
+}
+
+/* Borda Ornamentada em Vermelho/Salmão */
+.container::before {
+    content: "";
+    position: absolute;
+    top: 6px; left: 6px; right: 6px; bottom: 6px;
+    border: 1px solid rgba(250, 128, 114, 0.3);
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+@keyframes surgir {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Navegação em Tabs / Cards */
+.tabs { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; }
+
+.tab-card {
+    flex: 1;
+    min-width: 200px;
+    background-color: var(--cinza-medio);
+    border: 1px solid var(--salmao);
+    border-radius: 8px;
+    padding: 25px 20px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--branco-ornamentado);
+    transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tab-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+}
+
+.tab-card:hover {
+    background-color: #383838;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 18px rgba(127, 0, 0, 0.35);
+}
+
+.tab-card:hover::after { left: 130%; }
+
+.tab-card h3 { color: var(--salmao); margin-bottom: 8px; }
+
+/* Mensagens de Notificação */
+.messages { list-style: none; margin-bottom: 20px; }
+
+.messages .message {
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: var(--cinza-medio);
+    border-left: 4px solid var(--salmao);
+    color: var(--branco-puro);
+    font-weight: bold;
+    animation: surgir 0.4s ease-out;
+}
+
+.messages .error { 
+    background-color: var(--vermelho-principal); 
+    border-left-color: var(--branco-puro);
+}
+
+/* Títulos Ornamentados */
+h1, h2, h3 {
+    margin-bottom: 15px;
+    color: var(--salmao);
+    position: relative;
+    display: inline-block;
+}
+
+h1::after, h2::after {
+    content: "";
+    display: block;
+    width: 46px;
+    height: 2px;
+    margin-top: 6px;
+    background: linear-gradient(90deg, var(--vermelho-principal), var(--salmao), transparent);
+}
+
+/* Tabelas */
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+
+table th, table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--cinza-borda); }
+
+table th {
+    background-color: var(--vermelho-principal);
+    color: var(--branco-puro);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+table tr { transition: background-color 0.2s ease; }
+table tr:hover { background-color: rgba(250, 128, 114, 0.08); }
+
+tr.vencido { background-color: rgba(127, 0, 0, 0.35); }
+.estoque-baixo { color: #c0392b; font-weight: bold; }
+.estoque-excedente { color: #b8860b; font-weight: bold; }
+
+/* Botões */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary { background-color: var(--salmao); color: var(--preto); font-weight: bold; }
+.btn-primary:hover { background-color: var(--salmao-claro); }
+
+.btn-success { background-color: var(--cinza-medio); color: var(--branco-puro); border: 1px solid var(--cinza-borda); }
+.btn-success:hover { background-color: var(--cinza-borda); }
+
+.btn-danger { background-color: var(--vermelho-principal); color: var(--branco-puro); }
+.btn-danger:hover { background-color: var(--vermelho-hover); }
+
+/* Formulários */
+form input, form select, form textarea {
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 5px;
+    font-size: 0.95rem;
+    background-color: var(--preto);
+    color: var(--branco-ornamentado);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+form input:focus, form select:focus, form textarea:focus {
+    outline: none;
+    border-color: var(--salmao);
+    box-shadow: 0 0 0 3px rgba(250, 128, 114, 0.25);
+}
+
+form label { font-weight: bold; display: block; margin-bottom: 5px; color: var(--salmao); }
+
+.errorlist { list-style: none; color: var(--salmao-claro); margin-bottom: 10px; font-size: 0.9rem; }
+
+/* Rodapé */
+.footer {
+    text-align: center;
+    padding: 20px 15px;
+    color: var(--cinza-claro);
+    font-size: 0.85rem;
+    border-top: 1px solid rgba(250, 128, 114, 0.25);
+    margin-top: 30px;
+    position: relative;
+    z-index: 1;
+    opacity: 0.85;
+}
+
+.footer .autoria { 
+    display: block; 
+    margin-top: 4px; 
+    color: var(--salmao); 
+    letter-spacing: 1px; 
+    font-weight: bold; 
+}

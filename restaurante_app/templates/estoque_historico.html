@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Histórico de Estoque{% endblock %}
+{% block content %}
+<h1>Histórico de Movimentações de Estoque</h1>
+<a href="{% url 'movimentacao_create' %}" class="btn btn-success" style="margin-bottom: 12px; display:inline-block;">
+    + Registrar Saída/Perda/Ajuste
+</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Produto</th>
+            <th>Tipo</th>
+            <th>Quantidade</th>
+            <th>Estoque após</th>
+            <th>Observação</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for mov in movimentacoes %}
+        <tr>
+            <td>{{ mov.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ mov.produto.nome }}</td>
+            <td>{{ mov.get_tipo_display }}</td>
+            <td>{{ mov.quantidade }} {{ mov.produto.get_unidade_display }}</td>
+            <td>{{ mov.quantidade_resultante }} {{ mov.produto.get_unidade_display }}</td>
+            <td>{{ mov.observacao|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Nenhuma movimentação registrada ainda.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

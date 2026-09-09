@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Início{% endblock %}
+{% block content %}
+<h1>Bem-vindo, {{ user.username }}</h1>
+<p style="margin-bottom: 20px;">Escolha uma área para continuar:</p>
+
+<div class="tabs">
+    <a href="{% url 'produto_list' %}" class="tab-card">
+        <h3>📦 Estoque</h3>
+        <p>Controle de produtos e validade</p>
+    </a>
+    <a href="{% url 'fornecedor_list' %}" class="tab-card">
+        <h3>🚚 Fornecedores</h3>
+        <p>Controle de compras e fornecedores</p>
+    </a>
+    <a href="{% url 'reserva_list' %}" class="tab-card">
+        <h3>📅 Agendamento</h3>
+        <p>Controle das reservas de mesa</p>
+    </a>
+    <a href="{% url 'reserva_create' %}" class="tab-card">
+        <h3>🍷 Reservar Mesa</h3>
+        <p>Fazer uma nova reserva</p>
+    </a>
+        <a href="{% url 'temperatura' %}" class="tab-card">
+        <h3>❄️ Temperatura</h3>
+        <p>Checar temperatura estoque</p>
+    </a>
+        </a>
+        <a href="{% url 'temperatura' %}" class="tab-card">
+        <h3>💵 Financeiro</h3>
+        <p>Checar temperatura estoque</p>
+    </a>
+</div>
+{% endblock %}

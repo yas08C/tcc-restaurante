@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Cardápio / Ficha Técnica{% endblock %}
+{% block content %}
+<h1>Cardápio e Ficha Técnica</h1>
+<a href="{% url 'prato_create' %}" class="btn btn-success" style="margin-bottom: 12px; display:inline-block;">
+    + Novo Prato
+</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Prato</th>
+            <th>Preço de venda</th>
+            <th>Insumos (ficha técnica)</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for info in pratos_info %}
+        <tr>
+            <td>{{ info.prato.nome }}{% if not info.prato.ativo %} <em>(inativo)</em>{% endif %}</td>
+            <td>R$ {{ info.prato.preco_venda }}</td>
+            <td>
+                {% for item in info.prato.itens_ficha_tecnica.all %}
+                    {{ item.quantidade_usada }} {{ item.produto.get_unidade_display }} de {{ item.produto.nome }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    <span style="color:#999;">sem ficha técnica</span>
+                {% endfor %}
+            </td>
+            <td>
+                {% if info.pode_vender %}
+                    <span style="color:#7bc47f;">✅ pode vender</span>
+                {% else %}
+                    <span style="color:#e05c5c;">⚠️ estoque insuficiente</span>
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" action="{% url 'prato_vender' info.prato.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" {% if not info.pode_vender %}disabled{% endif %}>
+                        Registrar Venda
+                    </button>
+                </form>
+                <a href="{% url 'prato_update' info.prato.pk %}" class="btn btn-primary">Editar</a>
+                <a href="{% url 'prato_delete' info.prato.pk %}" class="btn btn-danger">Excluir</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Nenhum prato cadastrado ainda.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

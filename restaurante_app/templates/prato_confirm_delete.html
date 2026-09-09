@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Excluir Prato{% endblock %}
+{% block content %}
+<h1>Excluir Prato</h1>
+<p>Tem certeza que deseja excluir "{{ prato.nome }}" e sua ficha técnica?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Excluir</button>
+    <a href="{% url 'prato_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}

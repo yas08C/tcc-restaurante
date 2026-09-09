@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Movimentar Estoque{% endblock %}
+{% block content %}
+<h1>Registrar Saída, Perda ou Ajuste</h1>
+<p style="color:#666;">
+    Use esta tela para dar baixa manual no estoque (uso na cozinha, produto perdido/vencido)
+    ou corrigir a contagem depois de um inventário físico. Compras (entradas) são
+    registradas automaticamente na tela de Fornecedores.
+</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Registrar</button>
+    <a href="{% url 'produto_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}

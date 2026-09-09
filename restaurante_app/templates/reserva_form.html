@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Reservar Mesa{% endblock %}
+{% block content %}
+<h1>Reservar Mesa</h1>
+<p style="margin-bottom: 15px;">Funcionamento: das 18:00 às 01:00 · Mesas de 1 a 15</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Confirmar Reserva</button>
+</form>
+{% endblock %}

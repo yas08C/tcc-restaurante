@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Estoque{% endblock %}
+{% block content %}
+<h1>Meu Estoque</h1>
+
+<div class="estoque-acoes" style="margin-bottom: 12px;">
+    <a href="{% url 'produto_create' %}" class="btn btn-success">+ Novo Produto</a>
+    <a href="{% url 'movimentacao_create' %}" class="btn btn-primary">Registrar Saída/Perda/Ajuste</a>
+    <a href="{% url 'estoque_historico' %}" class="btn btn-secondary">Histórico de Movimentações</a>
+</div>
+
+<div class="resumo-estoque" style="margin-bottom: 16px; padding: 10px 14px; background: #f4f4f4; border-radius: 6px;">
+    <strong>Valor total do estoque:</strong> R$ {{ valor_total_estoque|floatformat:2 }}
+    <span style="color: #666; font-size: 0.9em;">
+        (estimado pelo preço da última compra registrada de cada produto)
+    </span>
+</div>
+
+<form method="get" style="margin-bottom: 12px;">
+    <label for="categoria">Filtrar por categoria:</label>
+    <select name="categoria" id="categoria" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for valor, rotulo in categorias %}
+        <option value="{{ valor }}" {% if valor == categoria_selecionada %}selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Categoria</th>
+            <th>Quantidade</th>
+            <th>Mínima</th>
+            <th>Máxima</th>
+            <th>Validade</th>
+            <th>Valor em estoque</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for obj in produtos %}
+        <tr class="{% if obj.vencido %}vencido{% endif %}">
+            <td>{{ obj.nome }}</td>
+            <td>{{ obj.get_categoria_display }}</td>
+            <td class="{% if obj.quantidade <= obj.quantidade_minima %}estoque-baixo{% endif %} {% if obj.estoque_excedente %}estoque-excedente{% endif %}">
+                {{ obj.quantidade }} {{ obj.get_unidade_display }}
+                {% if obj.quantidade <= obj.quantidade_minima %}⚠️ baixo{% endif %}
+                {% if obj.estoque_excedente %}📦 excesso{% endif %}
+            </td>
+            <td>{{ obj.quantidade_minima }}</td>
+            <td>{{ obj.quantidade_maxima|default:"—" }}</td>
+            <td>{{ obj.validade }} {% if obj.vencido %}⚠️ vencido{% endif %}</td>
+            <td>
+                {% if obj.valor_em_estoque is not None %}
+                    R$ {{ obj.valor_em_estoque|floatformat:2 }}
+                {% else %}
+                    <span style="color:#999;">sem compra registrada</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'produto_update' obj.pk %}" class="btn btn-primary">Editar</a>
+                <a href="{% url 'produto_delete' obj.pk %}" class="btn btn-danger">Excluir</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">Nenhum produto cadastrado.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

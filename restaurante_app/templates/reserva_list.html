@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Agendamento de Reservas{% endblock %}
+{% block content %}
+<h1>Controle de Agendamento</h1>
+<a href="{% url 'reserva_create' %}" class="btn btn-success">+ Nova Reserva</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Mesa</th>
+            <th>Cliente</th>
+            <th>Telefone</th>
+            <th>Data</th>
+            <th>Horário</th>
+            <th>Pessoas</th>
+            <th>Valor</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for obj in reservas %}
+        <tr>
+            <td>Mesa {{ obj.mesa }}</td>
+            <td>{{ obj.cliente_nome }}</td>
+            <td>{{ obj.cliente_telefone }}</td>
+            <td>{{ obj.data }}</td>
+            <td>{{ obj.horario }}</td>
+            <td>{{ obj.quantidade_pessoas }}</td>
+            <td>R$ {{ obj.valor }}</td>
+            <td>
+                {% if obj.pago %}
+                    <span class="badge badge-success">Pago</span>
+                {% else %}
+                    <span class="badge badge-warning">Pendente</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if not obj.pago %}
+                <form method="post" action="{% url 'reserva_marcar_pago' obj.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                </form>
+                {% endif %}
+                <a href="{% url 'reserva_delete' obj.pk %}" class="btn btn-danger">Cancelar</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">Nenhuma reserva encontrada.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

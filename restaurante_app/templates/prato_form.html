@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Prato{% endblock %}
+{% block content %}
+<h1>{% if form.instance.pk %}Editar Prato{% else %}Novo Prato{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <h3>Ficha técnica (insumos consumidos por unidade vendida)</h3>
+    {{ formset.management_form }}
+    <table>
+        <thead>
+            <tr><th>Produto</th><th>Quantidade usada</th><th>Remover</th></tr>
+        </thead>
+        <tbody>
+            {% for f in formset %}
+            <tr>
+                <td>{{ f.produto }}{{ f.id }}</td>
+                <td>{{ f.quantidade_usada }}</td>
+                <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+            </tr>
+            {% if f.errors %}<tr><td colspan="3" style="color:#e05c5c;">{{ f.errors }}</td></tr>{% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="{% url 'prato_list' %}" class="btn btn-primary">Cancelar</a>
+</form>
+{% endblock %}
