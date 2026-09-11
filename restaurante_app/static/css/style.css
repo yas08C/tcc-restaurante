@@ -1,5 +1,4 @@
 :root {
-    /* Nova Paleta de Cores */
     --preto: #121212;
     --cinza-escuro: #1E1E1E;
     --cinza-medio: #2D2D2D;
@@ -152,6 +151,35 @@ body {
 .navbar-links a:hover { color: var(--salmao); border-color: transparent; }
 .navbar-links a:hover::before { transform: scaleX(1); }
 
+/* Botão hambúrguer — escondido no desktop, só aparece no breakpoint mobile */
+.navbar-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.navbar-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background-color: var(--salmao);
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+/* Anima as 3 linhas em um "X" quando o menu está aberto */
+.navbar-toggle.aberto span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.navbar-toggle.aberto span:nth-child(2) { opacity: 0; }
+.navbar-toggle.aberto span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
 /* Container Principal */
 .container {
     max-width: 1000px;
@@ -257,6 +285,18 @@ h1::after, h2::after {
     background: linear-gradient(90deg, var(--vermelho-principal), var(--salmao), transparent);
 }
 
+/* Wrapper responsivo de tabelas — o base.html envolve toda <table> nele
+   via JavaScript, permitindo rolagem horizontal em telas estreitas em vez
+   de espremer as colunas. */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 20px;
+}
+
+.table-responsive table { margin-bottom: 0; }
+
 /* Tabelas */
 table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
 
@@ -345,4 +385,85 @@ form label { font-weight: bold; display: block; margin-bottom: 5px; color: var(-
     color: var(--salmao); 
     letter-spacing: 1px; 
     font-weight: bold; 
+}
+
+@media (max-width: 900px) {
+    .container {
+        max-width: 100%;
+        margin: 16px;
+        padding: 20px;
+    }
+
+    .tab-card { min-width: 45%; }
+}
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 12px 16px;
+    }
+
+    .navbar-brand a { font-size: 1.15rem; }
+
+    /* Mostra o botão hambúrguer e esconde o menu por padrão */
+    .navbar-toggle { display: flex; }
+
+    .navbar-links {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        margin-top: 12px;
+        gap: 4px;
+    }
+
+    .navbar-links.aberto {
+        display: flex;
+        animation: surgir 0.25s ease-out;
+    }
+
+    .navbar-links a {
+        margin-left: 0;
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--cinza-borda);
+        font-size: 0.95rem;
+    }
+
+    .navbar-links a::before { display: none; }
+
+    .container {
+        margin: 12px;
+        padding: 16px;
+        border-radius: 6px;
+    }
+
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.2rem; }
+
+    /* Cards de navegação (home) ocupam a largura toda, um por linha */
+    .tabs { flex-direction: column; }
+    .tab-card { min-width: 100%; }
+
+    /* Tabelas: fonte menor + rolagem horizontal (via .table-responsive) */
+    table th, table td {
+        padding: 8px 6px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* Botões ocupam a largura toda, mais fáceis de tocar */
+    .btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+    }
+
+    .footer { padding: 16px 10px; font-size: 0.8rem; }
+}
+
+@media (max-width: 380px) {
+    .navbar-brand a { font-size: 1rem; }
+    .navbar-brand img { height: 24px; }
+    .container { margin: 8px; padding: 12px; }
 }

@@ -26,11 +26,11 @@
     </style>
 </head>
 <body>
-
+ 
     {% if user.is_authenticated %}
     <div id="banner-alertas"><span id="texto-banner-alertas"></span></div>
     {% endif %}
-
+ 
     <header class="navbar">
         <div class="navbar-brand">
             <a href="{% url 'home' %}">
@@ -39,7 +39,10 @@
             </a>
         </div>
         {% if user.is_authenticated %}
-        <nav class="navbar-links">
+        <button type="button" class="navbar-toggle" id="navbar-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="navbar-links">
+            <span></span><span></span><span></span>
+        </button>
+        <nav class="navbar-links" id="navbar-links">
             <a href="{% url 'home' %}">Início</a>
             <a href="{% url 'produto_list' %}">Estoque</a>
             <a href="{% url 'estoque_historico' %}">Histórico de Estoque</a>
@@ -53,7 +56,7 @@
         </nav>
         {% endif %}
     </header>
-
+ 
     <main class="container">
         {% if messages %}
             <ul class="messages">
@@ -62,23 +65,63 @@
                 {% endfor %}
             </ul>
         {% endif %}
-
+ 
         {% block content %}
         {% endblock %}
     </main>
-
+ 
     <footer class="footer">
         <p>&copy; {% now "Y" %} Sistema do Restaurante — Todos os direitos reservados</p>
         <span class="autoria">@TrabalhoTCC</span>
     </footer>
-
+ 
+    <script>
+        // Menu hambúrguer (mobile): abre/fecha a navbar-links e alterna o
+        // ícone de 3 linhas para "X". Roda em qualquer usuário logado.
+        (function () {
+            const toggle = document.getElementById('navbar-toggle');
+            const links = document.getElementById('navbar-links');
+            if (!toggle || !links) return;
+ 
+            function fecharMenu() {
+                links.classList.remove('aberto');
+                toggle.classList.remove('aberto');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+ 
+            toggle.addEventListener('click', function () {
+                const aberto = links.classList.toggle('aberto');
+                toggle.classList.toggle('aberto', aberto);
+                toggle.setAttribute('aria-expanded', String(aberto));
+            });
+ 
+            // Fecha o menu ao navegar para outra página (melhora a UX no celular)
+            links.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', fecharMenu);
+            });
+        })();
+ 
+        // Torna qualquer tabela do sistema rolável horizontalmente no celular,
+        // sem precisar editar cada template individualmente: envolve cada
+        // <table> existente em um <div class="table-responsive">.
+        (function () {
+            document.querySelectorAll('table').forEach(function (tabela) {
+                if (tabela.parentElement && tabela.parentElement.classList.contains('table-responsive')) return;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-responsive';
+                tabela.parentNode.insertBefore(wrapper, tabela);
+                wrapper.appendChild(tabela);
+            });
+        })();
+    </script>
+ 
     {% if user.is_authenticated %}
     <script>
         let ultimoTotalNotificacoes = 0;
         let audioContextLiberado = false;
         const somAlerta = new Audio("{% static 'audio/alerta.wav' %}");
         somAlerta.volume = 0.5;
-
+ 
         // Navegadores bloqueiam áudio automático até o usuário interagir com a
         // página pelo menos uma vez. Este listener "libera" o som no primeiro
         // clique/tecla, sem precisar de nenhum botão específico.
@@ -89,7 +132,7 @@
         }
         document.addEventListener('click', liberarAudio);
         document.addEventListener('keydown', liberarAudio);
-
+ 
         function checarNotificacoes() {
             fetch("{% url 'notificacoes_ativas' %}")
                 .then(function (resp) { return resp.json(); })
@@ -97,19 +140,19 @@
                     const banner = document.getElementById('banner-alertas');
                     const texto = document.getElementById('texto-banner-alertas');
                     const total = data.notificacoes.length;
-
+ 
                     if (total > 0) {
                         banner.style.display = 'block';
                         texto.textContent = data.notificacoes
                             .map(function (n) { return n.mensagem; })
                             .join('   |   ');
-
+ 
                         if (total > ultimoTotalNotificacoes) {
                             banner.classList.remove('destaque');
                             // força o navegador a "reiniciar" a animação
                             void banner.offsetWidth;
                             banner.classList.add('destaque');
-
+ 
                             if (audioContextLiberado) {
                                 somAlerta.currentTime = 0;
                                 somAlerta.play().catch(function () {
@@ -128,11 +171,11 @@
                     console.error('Erro ao checar notificações:', erro);
                 });
         }
-
+ 
         checarNotificacoes();
         setInterval(checarNotificacoes, 5000); // verifica a cada 5 segundos
     </script>
     {% endif %}
-
+ 
 </body>
 </html>
