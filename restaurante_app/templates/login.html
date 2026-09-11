@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
+<nav class="navbar-links" id="navbar-links">
+            <a href="{% url 'login_adm' %}">Admin</a>
+</nav>
 <h1>Entrar</h1>
 <form method="post">
     {% csrf_token %}
