@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Painel de Usuários{% endblock %}
+{% block content %}
+<h1>Painel de Usuários</h1>
+<p>Faça login para ver e gerenciar os usuários cadastrados no sistema.</p>
+
+{% if erro %}
+<ul class="messages"><li class="message error">{{ erro }}</li></ul>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <label for="usuario">Usuário</label>
+    <input type="text" name="usuario" id="usuario" autofocus required>
+
+    <label for="senha">Senha</label>
+    <input type="password" name="senha" id="senha" required>
+
+    <button type="submit" class="btn btn-primary">Entrar</button>
+</form>
+{% endblock %}

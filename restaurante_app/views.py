@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from django.db.models import Sum, Count
 
@@ -6,6 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Sum
 from django.db.models.functions import ExtractYear, ExtractMonth
@@ -560,3 +562,77 @@ def prato_vender(request, pk):
 
     messages.success(request, f'Venda de "{prato.nome}" registrada. Estoque atualizado.')
     return redirect('prato_list')
+
+
+# ---------- PAINEL DE USUÁRIOS (acesso restrito por usuário e senha) ----------
+# Área separada do login normal do sistema (não usa contas de restaurante).
+# Serve para você (dona do TCC) ver todas as contas já cadastradas e excluir
+# alguma se precisar. Login próprio guardado na sessão do navegador.
+
+PAINEL_USUARIOS_SESSION_KEY = 'painel_usuarios_liberado'
+
+
+def _credenciais_painel_usuarios():
+    """Lê usuário/senha do painel de variáveis de ambiente (ADMIN_USERNAME e
+    ADMIN_PASSWORD). Se não existirem (ex: rodando local sem configurar),
+    usa 'TCC' / 'yasmin123' como padrão."""
+    usuario = os.environ.get('ADMIN_USERNAME', 'TCC')
+    senha = os.environ.get('ADMIN_PASSWORD', 'yasmin123')
+    return usuario, senha
+
+
+def painel_usuarios_login(request):
+    """Tela de login (usuário + senha) do painel. Se as credenciais digitadas
+    baterem, libera a sessão do navegador para acessar a lista de usuários."""
+    if request.session.get(PAINEL_USUARIOS_SESSION_KEY):
+        return redirect('painel_usuarios_list')
+
+    erro = None
+    if request.method == 'POST':
+        usuario_digitado = request.POST.get('usuario', '')
+        senha_digitada = request.POST.get('senha', '')
+        usuario_correto, senha_correta = _credenciais_painel_usuarios()
+
+        if usuario_digitado == usuario_correto and senha_digitada == senha_correta:
+            request.session[PAINEL_USUARIOS_SESSION_KEY] = True
+            return redirect('painel_usuarios_list')
+        erro = 'Usuário ou senha incorretos.'
+
+    return render(request, 'painel_usuarios_login.html', {'erro': erro})
+
+
+def painel_usuarios_logout(request):
+    request.session.pop(PAINEL_USUARIOS_SESSION_KEY, None)
+    return redirect('painel_usuarios_login')
+
+
+def painel_usuarios_list(request):
+    """Lista todos os usuários (restaurantes) cadastrados no sistema,
+    com data de cadastro, último login e quantos produtos cada um tem."""
+    if not request.session.get(PAINEL_USUARIOS_SESSION_KEY):
+        return redirect('painel_usuarios_login')
+
+    usuarios = (
+        User.objects.all()
+        .annotate(total_produtos=Count('produtos', distinct=True))
+        .order_by('-date_joined')
+    )
+    return render(request, 'painel_usuarios_list.html', {'usuarios': usuarios})
+
+
+def painel_usuarios_delete(request, pk):
+    """Exclui um usuário. Como todos os modelos do sistema apontam pro
+    usuário com on_delete=CASCADE, excluir aqui apaga também TODOS os
+    produtos, reservas, fornecedores, despesas e pratos daquela conta."""
+    if not request.session.get(PAINEL_USUARIOS_SESSION_KEY):
+        return redirect('painel_usuarios_login')
+
+    usuario = get_object_or_404(User, pk=pk)
+
+    if request.method == 'POST':
+        nome = usuario.username
+        usuario.delete()
+        messages.success(request, f'Usuário "{nome}" e todos os seus dados foram excluídos.')
+        return redirect('painel_usuarios_list')
+
+    return render(request, 'painel_usuarios_confirm_delete.html', {'usuario': usuario})

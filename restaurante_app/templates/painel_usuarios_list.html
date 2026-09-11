@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Painel de Usuários{% endblock %}
+{% block content %}
+<h1>Usuários cadastrados</h1>
+<p style="margin-bottom: 15px;">
+    <a href="{% url 'painel_usuarios_logout' %}" class="btn btn-success">Sair do painel</a>
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th>Cadastrado em</th>
+            <th>Último login</th>
+            <th>Produtos no estoque</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for usuario in usuarios %}
+        <tr>
+            <td>{{ usuario.username }}</td>
+            <td>{{ usuario.email|default:"—" }}</td>
+            <td>{{ usuario.date_joined|date:"d/m/Y H:i" }}</td>
+            <td>{{ usuario.last_login|date:"d/m/Y H:i"|default:"Nunca entrou" }}</td>
+            <td>{{ usuario.total_produtos }}</td>
+            <td>
+                <a href="{% url 'painel_usuarios_delete' usuario.pk %}" class="btn btn-danger">Excluir</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Nenhum usuário cadastrado ainda.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
