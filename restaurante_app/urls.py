@@ -58,7 +58,7 @@ urlpatterns = [
     path('api/notificacoes/', views.notificacoes_ativas, name='notificacoes_ativas'),
 
     # Painel de usuários (acesso restrito por usuário e senha) — ver e excluir contas
-    path('painel-usuarios/', views.painel_usuarios_login, name='painel_usuarios_login'),
+    path('painel-usuarios/', views.painel_usuarios_login, name='login_adm'),
     path('painel-usuarios/sair/', views.painel_usuarios_logout, name='painel_usuarios_logout'),
     path('painel-usuarios/lista/', views.painel_usuarios_list, name='painel_usuarios_list'),
     path('painel-usuarios/<int:pk>/excluir/', views.painel_usuarios_delete, name='painel_usuarios_delete'),
