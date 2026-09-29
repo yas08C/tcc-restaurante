@@ -430,14 +430,16 @@ def receber_temperatura(request):
         data = json.loads(request.body)
         token = data['token']
         zona = data['zona']
-        temperatura = data['temperatura']
-    except (json.JSONDecodeError, KeyError):
+        temperatura = float(data['temperatura'])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         return JsonResponse({'erro': 'payload inválido'}, status=400)
 
     if zona not in dict(ZonaTemperatura.ZONA_CHOICES):
         return JsonResponse({'erro': 'zona inválida'}, status=400)
 
-    sensor = get_object_or_404(SensorESP32, token=token, ativo=True)
+    sensor = SensorESP32.objects.filter(token=token, ativo=True).first()
+    if sensor is None:
+        return JsonResponse({'erro': 'token inválido ou sensor inativo'}, status=401)
 
     zona_obj, _ = ZonaTemperatura.objects.get_or_create(
         usuario=sensor.usuario,
@@ -446,10 +448,9 @@ def receber_temperatura(request):
     )
     zona_obj.temp_atual = temperatura
     zona_obj.save(update_fields=['temp_atual', 'atualizado_em'])
-    # ↑ esse .save() dispara o signal verificar_alerta_temperatura automaticamente
+    # esse .save() dispara o signal verificar_alerta_temperatura automaticamente
 
     return JsonResponse({'status': 'ok', 'alerta': zona_obj.em_alerta})
-
 
 # ---------- NOTIFICAÇÕES (banner de alertas) ----------
 
@@ -575,8 +576,8 @@ PAINEL_USUARIOS_SESSION_KEY = 'painel_usuarios_liberado'
 def _credenciais_painel_usuarios():
     """Lê usuário/senha do painel de variáveis de ambiente (ADMIN_USERNAME e
     ADMIN_PASSWORD). Se não existirem (ex: rodando local sem configurar),
-    usa 'TCC' / 'yasmin123' como padrão."""
-    usuario = os.environ.get('ADMIN_USERNAME', 'TCC')
+    usa 'tcc' / 'yasmin123' como padrão."""
+    usuario = os.environ.get('ADMIN_USERNAME', 'tcc')
     senha = os.environ.get('ADMIN_PASSWORD', 'yasmin123')
     return usuario, senha
 
@@ -598,19 +599,19 @@ def painel_usuarios_login(request):
             return redirect('painel_usuarios_list')
         erro = 'Usuário ou senha incorretos.'
 
-    return render(request, 'painel_usuarios_login.html', {'erro': erro})
+    return render(request, 'login_adm.html', {'erro': erro})
 
 
 def painel_usuarios_logout(request):
     request.session.pop(PAINEL_USUARIOS_SESSION_KEY, None)
-    return redirect('painel_usuarios_login')
+    return redirect('login_adm')
 
 
 def painel_usuarios_list(request):
     """Lista todos os usuários (restaurantes) cadastrados no sistema,
     com data de cadastro, último login e quantos produtos cada um tem."""
     if not request.session.get(PAINEL_USUARIOS_SESSION_KEY):
-        return redirect('painel_usuarios_login')
+        return redirect('login_adm')
 
     usuarios = (
         User.objects.all()
@@ -625,7 +626,7 @@ def painel_usuarios_delete(request, pk):
     usuário com on_delete=CASCADE, excluir aqui apaga também TODOS os
     produtos, reservas, fornecedores, despesas e pratos daquela conta."""
     if not request.session.get(PAINEL_USUARIOS_SESSION_KEY):
-        return redirect('painel_usuarios_login')
+        return redirect('login_adm')
 
     usuario = get_object_or_404(User, pk=pk)
 
