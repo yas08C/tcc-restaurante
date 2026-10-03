@@ -441,6 +441,15 @@ def receber_temperatura(request):
     if sensor is None:
         return JsonResponse({'erro': 'token inválido ou sensor inativo'}, status=401)
 
+    # Se esse sensor foi travado numa zona específica (ex: DS18B20 -> Zona A),
+    # recusa qualquer envio pra uma zona diferente. Evita que um token mande
+    # dados pra zona errada e misture leituras entre zonas/usuários.
+    if sensor.zona and sensor.zona != zona:
+        return JsonResponse(
+            {'erro': f'este token so pode enviar dados da zona {sensor.zona}'},
+            status=403,
+        )
+
     zona_obj, _ = ZonaTemperatura.objects.get_or_create(
         usuario=sensor.usuario,
         zona=zona,

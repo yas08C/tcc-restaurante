@@ -15,5 +15,6 @@ admin.site.register(ItemFichaTecnica)
 
 @admin.register(SensorESP32)
 class SensorESP32Admin(admin.ModelAdmin):
-    list_display = ('nome', 'usuario', 'ativo', 'criado_em')
+    list_display = ('nome', 'usuario', 'tipo_sensor', 'zona', 'ativo', 'criado_em')
+    list_filter = ('usuario', 'tipo_sensor', 'zona', 'ativo')
     readonly_fields = ('token', 'criado_em')

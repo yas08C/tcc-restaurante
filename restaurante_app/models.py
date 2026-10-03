@@ -222,8 +222,25 @@ class ZonaTemperatura(models.Model):
 
 
 class SensorESP32(models.Model):
+    TIPO_CHOICES = [
+        ('DHT22', 'DHT22 (temperatura e umidade)'),
+        ('DS18B20', 'DS18B20 (temperatura - freezer)'),
+    ]
+
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sensores')
     nome = models.CharField(max_length=50, help_text="Ex: ESP32 - Câmara fria 1")
+    tipo_sensor = models.CharField(max_length=10, choices=TIPO_CHOICES, default='DHT22')
+    zona = models.CharField(
+        max_length=1,
+        choices=ZonaTemperatura.ZONA_CHOICES,
+        null=True,
+        blank=True,
+        help_text=(
+            "Trava este sensor a UMA zona específica (ex: Zona A pro DS18B20 do freezer). "
+            "Se o token for usado pra enviar uma zona diferente desta, o envio é recusado. "
+            "Deixe em branco se este token enviar mais de uma zona."
+        ),
+    )
     token = models.CharField(max_length=64, unique=True, default=secrets.token_hex, editable=False)
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -233,7 +250,8 @@ class SensorESP32(models.Model):
         verbose_name_plural = 'Sensores ESP32'
 
     def __str__(self):
-        return f"{self.nome} ({self.usuario})"
+        zona_str = f" - Zona {self.zona}" if self.zona else ""
+        return f"{self.nome} ({self.tipo_sensor}{zona_str}) - {self.usuario}"
 
 
 class Notificacao(models.Model):
