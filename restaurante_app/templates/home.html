@@ -13,6 +13,10 @@
         <h3>🚚 Fornecedores</h3>
         <p>Controle de compras e fornecedores</p>
     </a>
+    <a href="{% url 'prato_list' %}" class="tab-card">
+        <h3>🍽️ Cardápio</h3>
+        <p>Pratos e ficha técnica</p>
+    </a>
     <a href="{% url 'reserva_list' %}" class="tab-card">
         <h3>📅 Agendamento</h3>
         <p>Controle das reservas de mesa</p>
@@ -25,10 +29,9 @@
         <h3>❄️ Temperatura</h3>
         <p>Checar temperatura estoque</p>
     </a>
-        </a>
-        <a href="{% url 'temperatura' %}" class="tab-card">
+    <a href="{% url 'financeiro' %}" class="tab-card">
         <h3>💵 Financeiro</h3>
-        <p>Checar temperatura estoque</p>
+        <p>Receitas, despesas e balanço</p>
     </a>
 </div>
 {% endblock %}

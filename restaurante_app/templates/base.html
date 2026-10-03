@@ -9,7 +9,9 @@
     <style>
         #banner-alertas {
             display: none;
-            background-color: #c0392b;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
             color: #fff;
             padding: 10px 16px;
             text-align: center;
@@ -20,15 +22,27 @@
             animation: piscar-alerta 0.8s 4;
         }
         @keyframes piscar-alerta {
-            0%, 100% { background-color: #c0392b; }
-            50% { background-color: #e74c3c; }
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
         }
+        .bolha-alerta {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background-color: #c0392b;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .bolha-alerta.tipo-temperatura { background-color: #c0392b; }
+        .bolha-alerta.tipo-validade    { background-color: #d68910; }
+        .bolha-alerta.tipo-estoque     { background-color: #8e44ad; }
+        .bolha-alerta.tipo-excesso     { background-color: #2471a3; }
     </style>
 </head>
 <body>
  
     {% if user.is_authenticated %}
-    <div id="banner-alertas"><span id="texto-banner-alertas"></span></div>
+    <div id="banner-alertas"></div>
     {% endif %}
  
     <header class="navbar">
@@ -138,15 +152,22 @@
                 .then(function (resp) { return resp.json(); })
                 .then(function (data) {
                     const banner = document.getElementById('banner-alertas');
-                    const texto = document.getElementById('texto-banner-alertas');
                     const total = data.notificacoes.length;
  
                     if (total > 0) {
-                        banner.style.display = 'block';
-                        texto.textContent = data.notificacoes
-                            .map(function (n) { return n.mensagem; })
-                            .join('   |   ');
- 
+                        banner.style.display = 'flex';
+
+                        // Cada notificação vira seu próprio balão, colorido
+                        // conforme o tipo, em vez de um texto único corrido —
+                        // assim os avisos não se misturam visualmente.
+                        banner.innerHTML = '';
+                        data.notificacoes.forEach(function (n) {
+                            const bolha = document.createElement('span');
+                            bolha.className = 'bolha-alerta tipo-' + n.tipo;
+                            bolha.textContent = n.mensagem;
+                            banner.appendChild(bolha);
+                        });
+
                         if (total > ultimoTotalNotificacoes) {
                             banner.classList.remove('destaque');
                             // força o navegador a "reiniciar" a animação
