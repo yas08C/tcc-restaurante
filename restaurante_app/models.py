@@ -220,6 +220,13 @@ class ZonaTemperatura(models.Model):
             return False
         return self.temp_atual > self.temp_maxima or self.temp_atual < self.temp_minima
 
+    @property
+    def status_temperatura(self):
+        """'sem-leitura', 'fora' (acima da máxima ou abaixo da mínima) ou 'ok' (entre elas)."""
+        if self.temp_atual is None:
+            return 'sem-leitura'
+        return 'fora' if self.em_alerta else 'ok'
+
 
 class SensorESP32(models.Model):
     TIPO_CHOICES = [

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'restaurante/css/temperatura.css' %}">
+<link rel="stylesheet" href="{% static 'temperatura.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -10,7 +10,7 @@
 
 <div class="grid-zonas">
     {% for zona in zonas %}
-    <table class="tabela-zona {% if zona.em_alerta %}alerta{% endif %}">
+    <table class="tabela-zona {{ zona.status_temperatura }}">
         <caption>Zona {{ zona.zona }}</caption>
         <tbody>
             <tr>

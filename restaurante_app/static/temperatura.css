@@ -34,14 +34,29 @@
     color: #2B1A1F;
 }
 
-.tabela-zona.alerta {
-    border-color: #E53935;
-    background-color: #FFE1E6;
+/* Dentro da faixa (entre mínima e máxima): verde */
+.tabela-zona.ok {
+    border-color: #2E7D32;
+    background-color: #E8F5E9;
+}
+
+.tabela-zona.ok caption {
+    background-color: #2E7D32;
+}
+
+/* Fora da faixa (acima da máxima ou abaixo da mínima): vermelho */
+.tabela-zona.fora {
+    border-color: #C62828;
+    background-color: #FFEBEE;
     animation: piscar 1.2s infinite;
 }
 
+.tabela-zona.fora caption {
+    background-color: #C62828;
+}
+
 @keyframes piscar {
-    50% { border-color: #FFF0F5; }
+    50% { border-color: #FFFFFF; }
 }
 
 .icone-alerta {
