@@ -2,35 +2,40 @@
 {% block title %}Fornecedor{% endblock %}
 {% block content %}
 <h1>{% if form.instance.pk %}Editar Compra{% else %}Nova Compra{% endif %}</h1>
-<p style="margin-bottom: 15px;">O preço total é calculado automaticamente: quantidade já cadastrada no estoque do produto × preço da unidade.</p>
- 
+<p style="margin-bottom: 15px;">
+    {% if form.instance.pk %}
+        Produto e quantidade já entraram no estoque e não podem ser alterados aqui. Para corrigir a contagem, use
+        <em>Registrar Saída/Perda/Ajuste</em> no Estoque. O preço total é quantidade comprada × preço da unidade.
+    {% else %}
+        A quantidade comprada é <strong>somada ao estoque</strong> do produto. O preço total é quantidade comprada × preço da unidade
+        e fica registrado como está, mesmo que o estoque mude depois.
+    {% endif %}
+</p>
+
 <form method="post" id="form-fornecedor">
     {% csrf_token %}
     {{ form.as_p }}
- 
+
     <p><strong>Preço total: <span id="preco-total-preview">R$ 0,00</span></strong></p>
- 
+
     <button type="submit" class="btn btn-success">Salvar</button>
     <a href="{% url 'fornecedor_list' %}" class="btn btn-primary">Cancelar</a>
 </form>
- 
-{{ produtos_qtd|json_script:"produtos-qtd-data" }}
- 
+
 <script>
     (function () {
-        var produtosQtd = JSON.parse(document.getElementById('produtos-qtd-data').textContent);
-        var produtoSelect = document.getElementById('id_produto');
+        var quantidadeInput = document.getElementById('id_quantidade');
         var precoUnidadeInput = document.getElementById('id_preco_unidade');
         var preview = document.getElementById('preco-total-preview');
- 
+
+        function numero(valor) { return parseFloat(String(valor).replace(',', '.')) || 0; }
+
         function atualizarTotal() {
-            var quantidade = produtosQtd[produtoSelect.value] || 0;
-            var precoUnidade = parseFloat(precoUnidadeInput.value.replace(',', '.')) || 0;
-            var total = quantidade * precoUnidade;
+            var total = numero(quantidadeInput.value) * numero(precoUnidadeInput.value);
             preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
         }
- 
-        produtoSelect.addEventListener('change', atualizarTotal);
+
+        quantidadeInput.addEventListener('input', atualizarTotal);
         precoUnidadeInput.addEventListener('input', atualizarTotal);
         atualizarTotal();
     })();

@@ -10,28 +10,23 @@
 
 <div class="grid-zonas" id="grid-zonas">
     {% for zona in zonas %}
-    <table class="tabela-zona {{ zona.status_temperatura }}">
+    <table class="tabela-zona {{ zona.status_temperatura }}" data-zona="{{ zona.zona }}">
         <caption>Zona {{ zona.zona }}</caption>
         <tbody>
             <tr>
                 <th>Máxima</th>
-                <td>{{ zona.temp_maxima }} °C</td>
+                <td class="v-max">{{ zona.temp_maxima }} °C</td>
             </tr>
             <tr class="linha-atual">
                 <th>Atual</th>
-                <td>
-                    {% if zona.temp_atual is not None %}{{ zona.temp_atual }} °C{% else %}— °C{% endif %}
-                    {% if zona.em_alerta %}
-                        <span class="icone-alerta" title="Fora da faixa segura">⚠️</span>
-                    {% endif %}
-                </td>
+                <td class="v-atual">{% if zona.temp_atual is not None %}{{ zona.temp_atual }} °C{% else %}— °C{% endif %}{% if zona.em_alerta %} ⚠️{% endif %}</td>
             </tr>
             <tr>
                 <th>Mínima</th>
-                <td>{{ zona.temp_minima }} °C</td>
+                <td class="v-min">{{ zona.temp_minima }} °C</td>
             </tr>
             <tr class="linha-status">
-                <td colspan="2">
+                <td colspan="2" class="v-status">
                     {% if zona.status_temperatura == 'fora' %}Temperatura crítica
                     {% elif zona.status_temperatura == 'ok' %}Dentro da faixa
                     {% else %}Sem leitura{% endif %}
@@ -45,16 +40,31 @@
 </div>
 
 <script>
-    // Atualiza as cores sozinho a cada 10 segundos, sem recarregar a página toda
-    setInterval(function () {
-        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (r) { return r.text(); })
-            .then(function (html) {
-                var novo = new DOMParser().parseFromString(html, 'text/html').getElementById('grid-zonas');
-                var atual = document.getElementById('grid-zonas');
-                if (novo && atual) { atual.innerHTML = novo.innerHTML; }
-            })
-            .catch(function () { /* mantém a tela atual se a conexão falhar */ });
-    }, 10000);
+    // Atualiza as zonas sozinho a cada 10 segundos buscando só um JSON pequeno
+    // (sem recarregar nem reprocessar a página inteira).
+    (function () {
+        var URL_DADOS = "{% url 'temperatura_dados' %}";
+        var rotulos = { fora: 'Temperatura crítica', ok: 'Dentro da faixa', 'sem-leitura': 'Sem leitura' };
+
+        function atualizar() {
+            if (document.hidden) return;
+            fetch(URL_DADOS, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (dados) {
+                    dados.zonas.forEach(function (z) {
+                        var tabela = document.querySelector('[data-zona="' + z.zona + '"]');
+                        if (!tabela) { window.location.reload(); return; }  // zona nova apareceu
+                        tabela.className = 'tabela-zona ' + z.status;
+                        tabela.querySelector('.v-max').textContent = z.temp_maxima + ' °C';
+                        tabela.querySelector('.v-min').textContent = z.temp_minima + ' °C';
+                        tabela.querySelector('.v-atual').textContent =
+                            (z.temp_atual === null ? '—' : z.temp_atual) + ' °C' + (z.em_alerta ? ' ⚠️' : '');
+                        tabela.querySelector('.v-status').textContent = rotulos[z.status] || '';
+                    });
+                })
+                .catch(function () { /* mantém a tela atual se a conexão falhar */ });
+        }
+        setInterval(atualizar, 10000);
+    })();
 </script>
 {% endblock %}

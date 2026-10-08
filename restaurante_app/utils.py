@@ -1,66 +1,77 @@
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.utils import timezone
 
 from .models import Produto, Notificacao
 
+DIAS_AVISO_VALIDADE = 3
+INTERVALO_VERIFICACAO_SEGUNDOS = 60
 
-def verificar_alertas_estoque(usuario):
-    """Confere todos os produtos do usuário e cria/resolve notificações de
-    'perto de vencer' (3 dias ou menos) e 'estoque baixo'. Chamado sempre que
-    o banner de notificações é consultado (view notificacoes_ativas), então
-    não precisa de tarefa agendada em segundo plano."""
+
+def fmt(q):
+    """Decimal sem zeros à direita: 10.00 -> '10', 0.50 -> '0.5'."""
+    return format(q.normalize(), 'f')
+
+
+def _texto_validade(dias):
+    if dias < 0:
+        return f'venceu há {-dias} dia(s)'
+    if dias == 0:
+        return 'vence hoje'
+    return f'vence em {dias} dia(s)'
+
+
+def verificar_alertas_estoque(usuario, forcar=False):
+    """Confere os produtos do usuário e cria/atualiza/resolve notificações de
+    validade (já vencido ou vencendo em 3 dias), estoque baixo e estoque
+    excedente. É chamada pelo banner de notificações, mas no máximo uma vez por
+    minuto por usuário (a menos que `forcar`), para a consulta periódica do
+    navegador não ficar escrevendo no banco a cada poucos segundos.
+    Faz poucas queries no total (não uma por produto)."""
+    if not forcar and not cache.add(f'alertas-estoque:{usuario.pk}', 1, INTERVALO_VERIFICACAO_SEGUNDOS):
+        return
+
     hoje = timezone.localdate()
-    limite_validade = hoje + timedelta(days=3)
+    limite_validade = hoje + timedelta(days=DIAS_AVISO_VALIDADE)
+
+    abertas = {}
+    for n in Notificacao.objects.filter(
+        usuario=usuario, resolvida=False, produto__isnull=False, tipo__in=['validade', 'estoque', 'excesso']
+    ):
+        abertas.setdefault((n.tipo, n.produto_id), n)
+
+    criar, atualizar, resolver = [], [], []
+
+    def desejado(tipo, produto, mensagem):
+        n = abertas.pop((tipo, produto.pk), None)
+        if n is None:
+            criar.append(Notificacao(usuario=usuario, tipo=tipo, produto=produto, mensagem=mensagem))
+        elif n.mensagem != mensagem:
+            n.mensagem = mensagem
+            atualizar.append(n)
 
     for produto in Produto.objects.filter(usuario=usuario):
-        # --- Validade ---
-        perto_de_vencer = hoje <= produto.validade <= limite_validade
-        if perto_de_vencer:
+        # Só alerta validade se ainda há o que perder (vencido com estoque zerado não precisa de alerta).
+        if produto.quantidade > 0 and produto.validade <= limite_validade:
             dias = (produto.validade - hoje).days
-            texto_dias = 'hoje' if dias == 0 else f'em {dias} dia(s)'
-            # update_or_create: se a notificação já existir, atualiza a mensagem
-            # com a contagem de dias recalculada; se não existir, cria. Assim o
-            # texto acompanha a data atual em vez de ficar travado no dia da criação.
-            Notificacao.objects.update_or_create(
-                usuario=usuario, tipo='validade', produto=produto, resolvida=False,
-                defaults={'mensagem': f'{produto.nome} vence {texto_dias}!'}
-            )
-        else:
-            Notificacao.objects.filter(
-                usuario=usuario, tipo='validade', produto=produto, resolvida=False
-            ).update(resolvida=True)
+            desejado('validade', produto, f'{produto.nome} {_texto_validade(dias)}!')
 
-        # --- Estoque baixo ---
-        estoque_baixo = produto.quantidade <= produto.quantidade_minima
-        if estoque_baixo:
-            ja_existe = Notificacao.objects.filter(
-                usuario=usuario, tipo='estoque', produto=produto, resolvida=False
-            ).exists()
-            if not ja_existe:
-                Notificacao.objects.create(
-                    usuario=usuario, tipo='estoque', produto=produto,
-                    mensagem=f'{produto.nome} está com estoque baixo '
-                             f'({produto.quantidade} {produto.get_unidade_display()})!'
-                )
-        else:
-            Notificacao.objects.filter(
-                usuario=usuario, tipo='estoque', produto=produto, resolvida=False
-            ).update(resolvida=True)
+        if produto.quantidade <= produto.quantidade_minima:
+            desejado('estoque', produto,
+                     f'{produto.nome} está com estoque baixo '
+                     f'({fmt(produto.quantidade)} {produto.get_unidade_display()})!')
 
-        # --- Estoque excedente ---
         if produto.estoque_excedente:
-            ja_existe = Notificacao.objects.filter(
-                usuario=usuario, tipo='excesso', produto=produto, resolvida=False
-            ).exists()
-            if not ja_existe:
-                Notificacao.objects.create(
-                    usuario=usuario, tipo='excesso', produto=produto,
-                    mensagem=f'{produto.nome} está com estoque acima do recomendado '
-                             f'({produto.quantidade} {produto.get_unidade_display()}, '
-                             f'máximo {produto.quantidade_maxima})!'
-                )
-        else:
-            Notificacao.objects.filter(
-                usuario=usuario, tipo='excesso', produto=produto, resolvida=False
-            ).update(resolvida=True)
+            desejado('excesso', produto,
+                     f'{produto.nome} está com estoque acima do recomendado '
+                     f'({fmt(produto.quantidade)} {produto.get_unidade_display()}, '
+                     f'máximo {fmt(produto.quantidade_maxima)})!')
+
+    resolver = [n.pk for n in abertas.values()]  # sobrou = o problema passou
+    if criar:
+        Notificacao.objects.bulk_create(criar)
+    if atualizar:
+        Notificacao.objects.bulk_update(atualizar, ['mensagem'])
+    if resolver:
+        Notificacao.objects.filter(pk__in=resolver).update(resolvida=True)

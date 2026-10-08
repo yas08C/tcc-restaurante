@@ -2,8 +2,8 @@
 {% block title %}Pedido confirmado{% endblock %}
 {% block content %}
 <section class="cliente-bloco cliente-confirmado">
-    <h1>Pedido confirmado! ✅</h1>
-    <p>Pedido <strong>#{{ pedido.pk }}</strong> · Mesa <strong>{{ pedido.mesa }}</strong></p>
+    <h1>Pedido enviado! ✅</h1>
+    <p>Pedido <strong>#{{ pedido.pk }}</strong> · <strong>{{ pedido.mesa_display }}</strong></p>
 
     <table class="tabela-pedido">
         <thead>
@@ -23,7 +23,7 @@
         </tfoot>
     </table>
 
-    <p>Seu pedido foi enviado para a cozinha. Aguarde na mesa!</p>
-    <a href="{% url 'cliente_cardapio' restaurante.username %}" class="btn-confirmar" style="display:inline-block; text-decoration:none; text-align:center;">Fazer novo pedido</a>
+    <p>Seu pedido foi enviado ao restaurante e será confirmado pelo atendente. Aguarde na mesa!</p>
+    <a href="{% url 'cliente_cardapio' slug %}" class="btn-confirmar" style="display:inline-block; text-decoration:none; text-align:center;">Fazer novo pedido</a>
 </section>
 {% endblock %}

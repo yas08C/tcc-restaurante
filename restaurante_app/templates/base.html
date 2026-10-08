@@ -68,7 +68,10 @@
             <a href="{% url 'reserva_create' %}">Reservar Mesa</a>
             <a href="{% url 'temperatura' %}">Temperatura</a>
              <a href="{% url 'financeiro' %}">Financeiro</a>
-            <a href="{% url 'logout' %}">Sair ({{ user.username }})</a>
+            <form method="post" action="{% url 'logout' %}" class="form-sair">
+                {% csrf_token %}
+                <button type="submit">Sair ({{ user.username }})</button>
+            </form>
         </nav>
         {% endif %}
     </header>
@@ -150,6 +153,7 @@
         document.addEventListener('keydown', liberarAudio);
  
         function checarNotificacoes() {
+            if (document.hidden) return; // aba em segundo plano: não consulta
             fetch("{% url 'notificacoes_ativas' %}")
                 .then(function (resp) { return resp.json(); })
                 .then(function (data) {
@@ -196,9 +200,12 @@
         }
  
         checarNotificacoes();
-        setInterval(checarNotificacoes, 5000); // verifica a cada 5 segundos
+        setInterval(checarNotificacoes, 15000); // verifica a cada 15 segundos
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) checarNotificacoes();
+        });
     </script>
     {% endif %}
  
 </body>
-</html>
+</html>

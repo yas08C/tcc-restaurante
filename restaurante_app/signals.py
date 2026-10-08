@@ -1,25 +1,15 @@
+from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import ZonaTemperatura, Notificacao, Fornecedor, MovimentacaoEstoque
+from .models import ZonaTemperatura, Notificacao, PerfilRestaurante
 
 
-@receiver(post_save, sender=Fornecedor)
-def registrar_entrada_estoque(sender, instance, created, **kwargs):
-    """Toda compra registrada (Fornecedor) gera automaticamente uma entrada
-    no histórico de movimentações de estoque do produto comprado."""
-    if not created:
-        return
-    produto = instance.produto
-    MovimentacaoEstoque.objects.create(
-        usuario=instance.usuario,
-        produto=produto,
-        tipo='entrada',
-        quantidade=produto.quantidade,
-        quantidade_resultante=produto.quantidade,
-        observacao=f'Compra de {produto.quantidade} {produto.get_unidade_display()} '
-                   f'com {instance.nome_fornecedor}',
-    )
+@receiver(post_save, sender=User)
+def criar_perfil_restaurante(sender, instance, created, **kwargs):
+    """Todo usuário ganha um perfil com o slug público usado nos links do cliente."""
+    if created:
+        PerfilRestaurante.objects.get_or_create(usuario=instance)
 
 
 @receiver(post_save, sender=ZonaTemperatura)

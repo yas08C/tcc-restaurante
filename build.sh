@@ -19,4 +19,4 @@ if username and password and not User.objects.filter(username=username).exists()
     print('Superusuario criado:', username)
 else:
     print('Nenhum superusuario novo criado (ja existe ou faltam variaveis).')
-EOF
+EOF

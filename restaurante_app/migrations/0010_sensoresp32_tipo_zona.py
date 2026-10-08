@@ -20,4 +20,4 @@ class Migration(migrations.Migration):
             name='zona',
             field=models.CharField(blank=True, choices=[('A', 'Zona A'), ('B', 'Zona B'), ('C', 'Zona C'), ('D', 'Zona D')], help_text='Trava este sensor a UMA zona específica (ex: Zona A pro DS18B20 do freezer). Se o token for usado pra enviar uma zona diferente desta, o envio é recusado. Deixe em branco se este token enviar mais de uma zona.', max_length=1, null=True),
         ),
-    ]
+    ]

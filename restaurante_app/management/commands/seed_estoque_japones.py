@@ -1,4 +1,6 @@
-from datetime import date, timedelta
+from datetime import timedelta
+
+from django.utils import timezone
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
@@ -51,22 +53,17 @@ class Command(BaseCommand):
             raise CommandError(f'Usuário "{username}" não encontrado.')
 
         criados, atualizados = 0, 0
-        hoje = date.today()
+        hoje = timezone.localdate()
 
         for nome, categoria, unidade, validade_dias, qtd_min, qtd_max in PRODUTOS_ESTIMATIVA:
-            produto, criado = Produto.objects.get_or_create(
-                usuario=usuario,
-                nome=nome,
-                defaults={
-                    'categoria': categoria,
-                    'unidade': unidade,
-                    'quantidade': quantidade_inicial,
-                    'quantidade_minima': qtd_min,
-                    'quantidade_maxima': qtd_max,
-                    'validade': hoje + timedelta(days=validade_dias),
-                },
-            )
-            if criado:
+            # filter().first(): tolera nomes repetidos (get_or_create levantaria MultipleObjectsReturned)
+            produto = Produto.objects.filter(usuario=usuario, nome__iexact=nome).order_by('pk').first()
+            if produto is None:
+                Produto.objects.create(
+                    usuario=usuario, nome=nome, categoria=categoria, unidade=unidade,
+                    quantidade=quantidade_inicial, quantidade_minima=qtd_min,
+                    quantidade_maxima=qtd_max, validade=hoje + timedelta(days=validade_dias),
+                )
                 criados += 1
             else:
                 produto.quantidade_minima = qtd_min

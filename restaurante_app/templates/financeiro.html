@@ -44,8 +44,20 @@
                 <td><strong>R$ {{ m.total_geral_despesas }}</strong></td>
             </tr>
             <tr>
+                <td>Receita de pedidos entregues no mês (clientes nas mesas e vendas de balcão)</td>
+                <td>R$ {{ m.receita_pedidos }}</td>
+            </tr>
+            <tr>
+                <td>Pedidos entregues no mês</td>
+                <td>{{ m.qtd_pedidos }}</td>
+            </tr>
+            <tr>
                 <td>Total ganho em reservas pagas no mês</td>
                 <td>R$ {{ m.total_reservas }}</td>
+            </tr>
+            <tr>
+                <td><strong>Total de receitas (pedidos + reservas)</strong></td>
+                <td><strong>R$ {{ m.total_receitas }}</strong></td>
             </tr>
             <tr>
                 <td>Reservas pagas no mês</td>
@@ -60,7 +72,7 @@
                 <td>R$ {{ m.valor_por_pessoa }}</td>
             </tr>
             <tr>
-                <td><strong>Saldo do mês (reservas − despesas)</strong></td>
+                <td><strong>Saldo do mês (receitas − despesas)</strong></td>
                 <td>
                     <strong style="color: {% if m.saldo < 0 %}#e05c5c{% else %}#7bc47f{% endif %};">
                         R$ {{ m.saldo }}
@@ -75,19 +87,11 @@
 {% endfor %}
 
 {% if resumo_mensal %}
+{{ dados_grafico|json_script:"dados-grafico" }}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
-    // resumo_mensal vem ordenado do mais recente pro mais antigo; invertemos
-    // para o gráfico mostrar em ordem cronológica (mais antigo → mais recente).
-    const dadosMeses = [
-        {% for m in resumo_mensal %}
-        {
-            label: "{{ m.mes_nome }}/{{ m.ano }}",
-            despesas: {{ m.total_geral_despesas }},
-            receita: {{ m.total_reservas }},
-        },
-        {% endfor %}
-    ].reverse();
+    // Dados em ordem cronológica (mais antigo → mais recente), vindos como JSON.
+    const dadosMeses = JSON.parse(document.getElementById('dados-grafico').textContent);
 
     const ctx = document.getElementById('graficoFinanceiro');
     new Chart(ctx, {
@@ -101,7 +105,7 @@
                     backgroundColor: 'rgba(224, 92, 92, 0.7)',
                 },
                 {
-                    label: 'Receita de reservas (R$)',
+                    label: 'Receitas: pedidos + reservas (R$)',
                     data: dadosMeses.map(function (m) { return m.receita; }),
                     backgroundColor: 'rgba(123, 196, 127, 0.7)',
                 },
@@ -115,4 +119,4 @@
     });
 </script>
 {% endif %}
-{% endblock %}
+{% endblock %}

@@ -467,3 +467,25 @@ form label { font-weight: bold; display: block; margin-bottom: 5px; color: var(-
     .navbar-brand img { height: 24px; }
     .container { margin: 8px; padding: 12px; }
 }
+/* ===== Ajustes de correção ===== */
+:root { --dourado-claro: #E6C36A; }
+
+.link-admin { text-align: right; margin-bottom: 8px; font-size: 0.85rem; }
+.link-admin a { color: var(--dourado-claro); }
+
+/* Botão "Sair" (formulário POST) com a mesma aparência dos links da barra */
+.navbar-links .form-sair { display: inline; margin: 0; }
+.navbar-links .form-sair button {
+    background: none; border: 0; border-bottom: 1px solid transparent;
+    color: var(--branco-ornamentado); cursor: pointer; font: inherit;
+    font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-left: 20px; padding: 0 0 2px;
+}
+.navbar-links .form-sair button:hover { color: var(--salmao); }
+@media (max-width: 768px) {
+    .navbar-links .form-sair { display: block; }
+    .navbar-links .form-sair button {
+        width: 100%; text-align: left; margin-left: 0; padding: 10px 6px;
+        border-bottom: 1px solid var(--cinza-borda); font-size: 0.95rem;
+    }
+}

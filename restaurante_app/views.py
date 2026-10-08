@@ -1,32 +1,37 @@
 import json
+import math
 import os
+import secrets
 from collections import defaultdict
-from django.db.models import Sum, Count
+from decimal import Decimal, InvalidOperation
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.contrib.auth.models import User
 from django.contrib import messages
-from django.db.models import Sum
-from django.db.models.functions import ExtractYear, ExtractMonth
-from django.utils import timezone
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
+from django.db.models import Count
 from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.utils.formats import number_format
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import (
-    Produto, Reserva, Fornecedor, ZonaTemperatura, SensorESP32, DespesaFixa,
-    Notificacao, MovimentacaoEstoque, Prato, ItemFichaTecnica,
-)
+from . import servicos
 from .forms import (
     ProdutoForm, ReservaForm, FornecedorForm, DespesaFixaForm,
     MovimentacaoEstoqueForm, PratoForm, ItemFichaTecnicaFormSet, CadastroForm,
 )
+from .models import (
+    Produto, Reserva, Fornecedor, ZonaTemperatura, SensorESP32, DespesaFixa,
+    Notificacao, MovimentacaoEstoque, Prato, ItemPedido,
+    FAIXA_PADRAO_FREEZER, FAIXA_PADRAO_REFRIGERADO,
+)
+from .seguranca import excedeu_limite, ip_do_cliente, limpar_limite
 from .utils import verificar_alertas_estoque
-from django.db import transaction, IntegrityError
-from django.utils.http import url_has_allowed_host_and_scheme
 
 
 # ---------- AUTENTICAÇÃO ----------
@@ -51,6 +56,7 @@ def login_view(request):
     return render(request, 'login.html', {'form': form})
 
 
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect('login')
@@ -90,17 +96,18 @@ def home(request):
 
 @login_required
 def produto_list(request):
-    produtos = Produto.objects.filter(usuario=request.user)
+    produtos = Produto.objects.filter(usuario=request.user).com_ultimo_preco()
 
     categoria_selecionada = request.GET.get('categoria', '')
     if categoria_selecionada:
         produtos = produtos.filter(categoria=categoria_selecionada)
+    produtos = list(produtos)
 
     # Valor total do estoque parado, estimado pelo preço da última compra de
     # cada produto (produtos sem nenhuma compra registrada não entram na soma).
     valor_total_estoque = sum(
         (p.valor_em_estoque for p in produtos if p.valor_em_estoque is not None),
-        start=0,
+        start=Decimal('0'),
     )
 
     context = {
@@ -116,7 +123,10 @@ def produto_list(request):
 
 @login_required
 def estoque_historico(request):
-    movimentacoes = MovimentacaoEstoque.objects.filter(usuario=request.user)
+    movimentacoes = (
+        MovimentacaoEstoque.objects.filter(usuario=request.user)
+        .select_related('produto')[:500]
+    )
     return render(request, 'estoque_historico.html', {'movimentacoes': movimentacoes})
 
 
@@ -125,23 +135,19 @@ def movimentacao_create(request):
     if request.method == 'POST':
         form = MovimentacaoEstoqueForm(request.POST, usuario=request.user)
         if form.is_valid():
-            movimentacao = form.save(commit=False)
-            movimentacao.usuario = request.user
-            produto = movimentacao.produto
-
-            if movimentacao.tipo == 'ajuste':
-                # Ajuste de contagem: a quantidade informada é o novo total.
-                produto.quantidade = movimentacao.quantidade
+            try:
+                servicos.aplicar_movimentacao(
+                    request.user, form.cleaned_data['produto'].pk, form.cleaned_data['tipo'],
+                    form.cleaned_data['quantidade'], form.cleaned_data['observacao'],
+                )
+            except servicos.EstoqueInsuficiente as e:
+                # outra requisição consumiu o estoque entre a validação e o travamento
+                form.add_error(None, f'Estoque insuficiente de {e}.')
+            except servicos.PedidoInvalido:
+                form.add_error('produto', 'Produto não encontrado.')
             else:
-                # Saída ou perda: reduz a quantidade atual.
-                produto.quantidade -= movimentacao.quantidade
-
-            produto.save(update_fields=['quantidade'])
-            movimentacao.quantidade_resultante = produto.quantidade
-            movimentacao.save()
-
-            messages.success(request, 'Movimentação de estoque registrada com sucesso.')
-            return redirect('estoque_historico')
+                messages.success(request, 'Movimentação de estoque registrada com sucesso.')
+                return redirect('estoque_historico')
     else:
         form = MovimentacaoEstoqueForm(usuario=request.user)
     return render(request, 'movimentacao_form.html', {'form': form})
@@ -150,7 +156,7 @@ def movimentacao_create(request):
 @login_required
 def produto_create(request):
     if request.method == 'POST':
-        form = ProdutoForm(request.POST)
+        form = ProdutoForm(request.POST, usuario=request.user)
         if form.is_valid():
             produto = form.save(commit=False)
             produto.usuario = request.user
@@ -158,7 +164,7 @@ def produto_create(request):
             messages.success(request, 'Produto cadastrado com sucesso.')
             return redirect('produto_list')
     else:
-        form = ProdutoForm()
+        form = ProdutoForm(usuario=request.user)
     return render(request, 'produto_form.html', {'form': form})
 
 
@@ -166,13 +172,13 @@ def produto_create(request):
 def produto_update(request, pk):
     produto = get_object_or_404(Produto, pk=pk, usuario=request.user)
     if request.method == 'POST':
-        form = ProdutoForm(request.POST, instance=produto)
+        form = ProdutoForm(request.POST, instance=produto, usuario=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Produto atualizado com sucesso.')
             return redirect('produto_list')
     else:
-        form = ProdutoForm(instance=produto)
+        form = ProdutoForm(instance=produto, usuario=request.user)
     return render(request, 'produto_form.html', {'form': form})
 
 
@@ -190,7 +196,7 @@ def produto_delete(request, pk):
 
 @login_required
 def fornecedor_list(request):
-    fornecedores = Fornecedor.objects.filter(usuario=request.user)
+    fornecedores = Fornecedor.objects.filter(usuario=request.user).select_related('produto')
     return render(request, 'fornecedor_list.html', {'fornecedores': fornecedores})
 
 
@@ -201,13 +207,12 @@ def fornecedor_create(request):
         if form.is_valid():
             fornecedor = form.save(commit=False)
             fornecedor.usuario = request.user
-            fornecedor.save()
-            messages.success(request, 'Compra registrada com sucesso.')
+            servicos.registrar_compra(fornecedor)  # salva a compra E soma ao estoque
+            messages.success(request, 'Compra registrada e quantidade somada ao estoque.')
             return redirect('fornecedor_list')
     else:
         form = FornecedorForm(usuario=request.user)
-    produtos_qtd = {p.id: float(p.quantidade) for p in Produto.objects.filter(usuario=request.user)}
-    return render(request, 'fornecedor_form.html', {'form': form, 'produtos_qtd': produtos_qtd})
+    return render(request, 'fornecedor_form.html', {'form': form})
 
 
 @login_required
@@ -221,8 +226,7 @@ def fornecedor_update(request, pk):
             return redirect('fornecedor_list')
     else:
         form = FornecedorForm(instance=fornecedor, usuario=request.user)
-    produtos_qtd = {p.id: float(p.quantidade) for p in Produto.objects.filter(usuario=request.user)}
-    return render(request, 'fornecedor_form.html', {'form': form, 'produtos_qtd': produtos_qtd})
+    return render(request, 'fornecedor_form.html', {'form': form})
 
 
 @login_required
@@ -292,19 +296,18 @@ def financeiro_view(request):
     hoje = timezone.localdate()
 
     resumo = defaultdict(lambda: {
-        'total_gasto': 0, 'aluguel': 0, 'total_contas': 0,
+        'total_gasto': Decimal('0'), 'aluguel': Decimal('0'), 'total_contas': Decimal('0'),
         'total_pessoas': 0, 'qtd_reservas_pagas': 0,
+        'receita_pedidos': Decimal('0'), 'qtd_pedidos': 0,
     })
 
+    # Os meses são calculados em Python, no fuso do restaurante (e não com
+    # Extract no banco, que no MySQL exige as tabelas de fuso horário carregadas).
+
     # Compras de produtos (Fornecedor), agrupadas por mês/ano da compra
-    compras_por_mes = (
-        Fornecedor.objects.filter(usuario=request.user)
-        .annotate(ano=ExtractYear('criado_em'), mes=ExtractMonth('criado_em'))
-        .values('ano', 'mes')
-        .annotate(total=Sum('preco_total'))
-    )
-    for c in compras_por_mes:
-        resumo[(c['ano'], c['mes'])]['total_gasto'] += c['total']
+    for criado_em, total in Fornecedor.objects.filter(usuario=request.user).values_list('criado_em', 'preco_total'):
+        dia = timezone.localtime(criado_em)
+        resumo[(dia.year, dia.month)]['total_gasto'] += total
 
     # Despesas fixas (aluguel/água/energia/outros) já guardam ano/mes próprios
     for d in DespesaFixa.objects.filter(usuario=request.user):
@@ -314,15 +317,21 @@ def financeiro_view(request):
             resumo[(d.ano, d.mes)]['total_contas'] += d.valor
 
     # Reservas pagas, agrupadas pelo mês/ano da DATA da reserva
-    reservas_por_mes = (
-        Reserva.objects.filter(usuario=request.user, pago=True)
-        .annotate(ano=ExtractYear('data'), mes=ExtractMonth('data'))
-        .values('ano', 'mes')
-        .annotate(total_pessoas=Sum('quantidade_pessoas'), qtd=Count('id'))
-    )
-    for r in reservas_por_mes:
-        resumo[(r['ano'], r['mes'])]['total_pessoas'] += r['total_pessoas']
-        resumo[(r['ano'], r['mes'])]['qtd_reservas_pagas'] += r['qtd']
+    for data, pessoas in Reserva.objects.filter(usuario=request.user, pago=True).values_list('data', 'quantidade_pessoas'):
+        resumo[(data.year, data.month)]['total_pessoas'] += pessoas
+        resumo[(data.year, data.month)]['qtd_reservas_pagas'] += 1
+
+    # Pedidos entregues (clientes nas mesas e vendas de balcão), pelo mês do pedido
+    itens = ItemPedido.objects.filter(pedido__usuario=request.user, pedido__status='entregue')
+    pedidos_contados = set()
+    for pedido_id, criado_em, preco, qtd in itens.values_list(
+            'pedido_id', 'pedido__criado_em', 'preco_unitario', 'quantidade'):
+        dia = timezone.localtime(criado_em)
+        mes = resumo[(dia.year, dia.month)]
+        mes['receita_pedidos'] += preco * qtd
+        if pedido_id not in pedidos_contados:
+            pedidos_contados.add(pedido_id)
+            mes['qtd_pedidos'] += 1
 
     nomes_meses = dict(DespesaFixa.MESES_CHOICES)
     resumo_mensal = []
@@ -330,7 +339,8 @@ def financeiro_view(request):
         total_despesas_fixas = v['aluguel'] + v['total_contas']
         total_geral_despesas = v['total_gasto'] + total_despesas_fixas
         total_reservas = v['total_pessoas'] * Reserva.VALOR_POR_PESSOA
-        saldo = total_reservas - total_geral_despesas
+        total_receitas = total_reservas + v['receita_pedidos']
+        saldo = total_receitas - total_geral_despesas
         resumo_mensal.append({
             'ano': ano,
             'mes': mes,
@@ -343,14 +353,25 @@ def financeiro_view(request):
             'qtd_reservas_pagas': v['qtd_reservas_pagas'],
             'total_pessoas': v['total_pessoas'],
             'total_reservas': total_reservas,
+            'receita_pedidos': v['receita_pedidos'],
+            'qtd_pedidos': v['qtd_pedidos'],
+            'total_receitas': total_receitas,
             'valor_por_pessoa': Reserva.VALOR_POR_PESSOA,
             'saldo': saldo,
             'is_mes_atual': (ano == hoje.year and mes == hoje.month),
         })
 
+    # Dados do gráfico (cronológico), entregues ao template como JSON seguro.
+    dados_grafico = [
+        {'label': f"{m['mes_nome']}/{m['ano']}", 'despesas': float(m['total_geral_despesas']),
+         'receita': float(m['total_receitas'])}
+        for m in reversed(resumo_mensal)
+    ]
+
     context = {
         'mes_referencia': hoje,
         'resumo_mensal': resumo_mensal,
+        'dados_grafico': dados_grafico,
     }
     return render(request, 'financeiro.html', context)
 
@@ -364,19 +385,17 @@ def despesa_list(request):
     # Resumo mensal com TODAS as despesas do restaurante: aluguel, água,
     # energia, outros (DespesaFixa) + compra de produtos (Fornecedor),
     # já somados e agrupados por mês/ano.
-    resumo = defaultdict(lambda: {'aluguel': 0, 'agua': 0, 'energia': 0, 'outros': 0, 'produtos': 0})
+    resumo = defaultdict(lambda: {
+        'aluguel': Decimal('0'), 'agua': Decimal('0'), 'energia': Decimal('0'),
+        'outros': Decimal('0'), 'produtos': Decimal('0'),
+    })
 
     for d in despesas:
         resumo[(d.ano, d.mes)][d.tipo] += d.valor
 
-    compras_por_mes = (
-        Fornecedor.objects.filter(usuario=request.user)
-        .annotate(ano=ExtractYear('criado_em'), mes=ExtractMonth('criado_em'))
-        .values('ano', 'mes')
-        .annotate(total=Sum('preco_total'))
-    )
-    for c in compras_por_mes:
-        resumo[(c['ano'], c['mes'])]['produtos'] += c['total']
+    for criado_em, total in Fornecedor.objects.filter(usuario=request.user).values_list('criado_em', 'preco_total'):
+        dia = timezone.localtime(criado_em)
+        resumo[(dia.year, dia.month)]['produtos'] += total
 
     nomes_meses = dict(DespesaFixa.MESES_CHOICES)
     resumo_mensal = []
@@ -399,7 +418,7 @@ def despesa_list(request):
 @login_required
 def despesa_create(request):
     if request.method == 'POST':
-        form = DespesaFixaForm(request.POST)
+        form = DespesaFixaForm(request.POST, usuario=request.user)
         if form.is_valid():
             despesa = form.save(commit=False)
             despesa.usuario = request.user
@@ -407,7 +426,7 @@ def despesa_create(request):
             messages.success(request, 'Despesa cadastrada com sucesso.')
             return redirect('despesa_list')
     else:
-        form = DespesaFixaForm(initial={'mes': timezone.localdate().month, 'ano': timezone.localdate().year})
+        form = DespesaFixaForm(usuario=request.user, initial={'mes': timezone.localdate().month, 'ano': timezone.localdate().year})
     return render(request, 'despesa_form.html', {'form': form})
 
 
@@ -415,13 +434,13 @@ def despesa_create(request):
 def despesa_update(request, pk):
     despesa = get_object_or_404(DespesaFixa, pk=pk, usuario=request.user)
     if request.method == 'POST':
-        form = DespesaFixaForm(request.POST, instance=despesa)
+        form = DespesaFixaForm(request.POST, instance=despesa, usuario=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Despesa atualizada com sucesso.')
             return redirect('despesa_list')
     else:
-        form = DespesaFixaForm(instance=despesa)
+        form = DespesaFixaForm(instance=despesa, usuario=request.user)
     return render(request, 'despesa_form.html', {'form': form})
 
 
@@ -437,29 +456,89 @@ def despesa_delete(request, pk):
 
 # ---------- TEMPERATURA (ESP32) ----------
 
+def _dados_zonas(usuario):
+    return [
+        {
+            'zona': z.zona,
+            'temp_maxima': number_format(z.temp_maxima, decimal_pos=2),
+            'temp_minima': number_format(z.temp_minima, decimal_pos=2),
+            'temp_atual': None if z.temp_atual is None else number_format(z.temp_atual, decimal_pos=2),
+            'status': z.status_temperatura,
+            'em_alerta': z.em_alerta,
+        }
+        for z in ZonaTemperatura.objects.filter(usuario=usuario).order_by('zona')
+    ]
+
+
 @login_required
 def temperatura_view(request):
     zonas = ZonaTemperatura.objects.filter(usuario=request.user).order_by('zona')
     return render(request, 'restaurante/temperatura.html', {'zonas': zonas})
 
 
+@login_required
+def temperatura_dados(request):
+    """JSON leve usado pela tela de temperatura para se atualizar sem recarregar a página."""
+    return JsonResponse({'zonas': _dados_zonas(request.user)})
+
+
+# Faixa de leitura fisicamente possível para DHT22 (-40..80) e DS18B20 (-55..125).
+TEMP_MIN_VALIDA = Decimal('-55')
+TEMP_MAX_VALIDA = Decimal('125')
+LIMITE_ENVIOS_POR_MINUTO = 20  # o ESP32 envia a cada 30 s por zona
+
+
+def _ler_temperatura(valor):
+    """Converte o valor recebido em Decimal com 2 casas, ou None se for inválido
+    (texto, NaN, infinito, booleano ou fora da faixa dos sensores)."""
+    if isinstance(valor, bool):
+        return None
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(numero):
+        return None
+    try:
+        temperatura = Decimal(str(round(numero, 2)))
+    except InvalidOperation:
+        return None
+    if not (TEMP_MIN_VALIDA <= temperatura <= TEMP_MAX_VALIDA):
+        return None
+    return temperatura
+
+
 @csrf_exempt
 @require_POST
 def receber_temperatura(request):
+    ip = ip_do_cliente(request)
+    if excedeu_limite(f'esp32-ip:{ip}', LIMITE_ENVIOS_POR_MINUTO * 3, 60):
+        return JsonResponse({'erro': 'muitas requisições'}, status=429)
+
     try:
         data = json.loads(request.body)
         token = data['token']
         zona = data['zona']
-        temperatura = float(data['temperatura'])
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        valor = data['temperatura']
+    except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError):
         return JsonResponse({'erro': 'payload inválido'}, status=400)
+
+    if not isinstance(token, str) or not isinstance(zona, str):
+        return JsonResponse({'erro': 'payload inválido'}, status=400)
+
+    temperatura = _ler_temperatura(valor)
+    if temperatura is None:
+        return JsonResponse({'erro': 'temperatura inválida'}, status=400)
 
     if zona not in dict(ZonaTemperatura.ZONA_CHOICES):
         return JsonResponse({'erro': 'zona inválida'}, status=400)
 
-    sensor = SensorESP32.objects.filter(token=token, ativo=True).first()
+    sensor = SensorESP32.objects.filter(token=token, ativo=True).select_related('usuario').first()
     if sensor is None:
         return JsonResponse({'erro': 'token inválido ou sensor inativo'}, status=401)
+
+    if excedeu_limite(f'esp32-token:{sensor.pk}', LIMITE_ENVIOS_POR_MINUTO, 60):
+        return JsonResponse({'erro': 'muitas requisições'}, status=429)
 
     # Se esse sensor foi travado numa zona específica (ex: DS18B20 -> Zona A),
     # recusa qualquer envio pra uma zona diferente. Evita que um token mande
@@ -470,10 +549,12 @@ def receber_temperatura(request):
             status=403,
         )
 
+    # Zona nova: faixa inicial conforme o tipo do sensor (freezer x refrigerado).
+    minima, maxima = FAIXA_PADRAO_FREEZER if sensor.tipo_sensor == 'DS18B20' else FAIXA_PADRAO_REFRIGERADO
     zona_obj, _ = ZonaTemperatura.objects.get_or_create(
         usuario=sensor.usuario,
         zona=zona,
-        defaults={'temp_minima': 0, 'temp_maxima': 8}
+        defaults={'temp_minima': minima, 'temp_maxima': maxima},
     )
     zona_obj.temp_atual = temperatura
     zona_obj.save(update_fields=['temp_atual', 'atualizado_em'])
@@ -481,13 +562,14 @@ def receber_temperatura(request):
 
     return JsonResponse({'status': 'ok', 'alerta': zona_obj.em_alerta})
 
+
 # ---------- NOTIFICAÇÕES (banner de alertas) ----------
 
 @login_required
 def notificacoes_ativas(request):
-    """Endpoint consultado via JavaScript (a cada poucos segundos) para
-    alimentar o banner de alertas. Também reaproveita a chamada para
-    checar validade/estoque baixo, sem precisar de tarefa agendada."""
+    """Endpoint consultado via JavaScript para alimentar o banner de alertas.
+    Também reaproveita a chamada para checar validade/estoque (no máximo uma
+    vez por minuto por usuário), sem precisar de tarefa agendada."""
     verificar_alertas_estoque(request.user)
 
     notificacoes = Notificacao.objects.filter(usuario=request.user, resolvida=False)
@@ -497,11 +579,13 @@ def notificacoes_ativas(request):
     ]
     return JsonResponse({'notificacoes': dados})
 
+
 # ---------- FICHA TÉCNICA (PRATOS DO CARDÁPIO) ----------
 
 @login_required
 def prato_list(request):
     pratos = Prato.objects.filter(usuario=request.user).prefetch_related('itens_ficha_tecnica__produto')
+    pratos = list(pratos)
     pratos_info = [{'prato': p, 'pode_vender': p.pode_ser_vendido()} for p in pratos]
     return render(request, 'prato_list.html', {'pratos_info': pratos_info})
 
@@ -554,43 +638,25 @@ def prato_delete(request, pk):
 
 @login_required
 def prato_vender(request, pk):
-    """Registra a venda de 1 unidade do prato: baixa automaticamente o
-    estoque de cada insumo da ficha técnica e cria uma MovimentacaoEstoque
-    de saída para cada um. Tudo dentro de uma transação — ou baixa tudo
-    corretamente, ou não baixa nada (evita estoque inconsistente)."""
+    """Registra a venda de balcão de 1 unidade do prato: baixa o estoque de cada
+    insumo da ficha técnica (uma MovimentacaoEstoque de saída por insumo) e cria
+    um pedido já entregue, para a receita entrar no Financeiro. Tudo numa única
+    transação, com os produtos travados: ou baixa tudo, ou não baixa nada."""
     prato = get_object_or_404(Prato, pk=pk, usuario=request.user)
 
     if request.method != 'POST':
         return redirect('prato_list')
 
-    itens = list(prato.itens_ficha_tecnica.select_related('produto'))
-    if not itens:
+    if not prato.itens_ficha_tecnica.exists():
         messages.error(request, f'"{prato.nome}" não tem ficha técnica cadastrada.')
         return redirect('prato_list')
 
-    faltando = [
-        item for item in itens if item.produto.quantidade < item.quantidade_usada
-    ]
-    if faltando:
-        nomes = ', '.join(item.produto.nome for item in faltando)
-        messages.error(request, f'Estoque insuficiente para vender "{prato.nome}": faltando {nomes}.')
-        return redirect('prato_list')
-
-    with transaction.atomic():
-        for item in itens:
-            produto = item.produto
-            produto.quantidade -= item.quantidade_usada
-            produto.save(update_fields=['quantidade'])
-            MovimentacaoEstoque.objects.create(
-                usuario=request.user,
-                produto=produto,
-                tipo='saida',
-                quantidade=item.quantidade_usada,
-                quantidade_resultante=produto.quantidade,
-                observacao=f'Venda de 1x {prato.nome}',
-            )
-
-    messages.success(request, f'Venda de "{prato.nome}" registrada. Estoque atualizado.')
+    try:
+        servicos.vender_prato(request.user, prato)
+    except servicos.EstoqueInsuficiente as e:
+        messages.error(request, f'Estoque insuficiente para vender "{prato.nome}": faltando {e}.')
+    else:
+        messages.success(request, f'Venda de "{prato.nome}" registrada. Estoque atualizado.')
     return redirect('prato_list')
 
 
@@ -600,15 +666,18 @@ def prato_vender(request, pk):
 # alguma se precisar. Login próprio guardado na sessão do navegador.
 
 PAINEL_USUARIOS_SESSION_KEY = 'painel_usuarios_liberado'
+PAINEL_MAX_TENTATIVAS = 5
+PAINEL_JANELA_SEGUNDOS = 15 * 60
 
 
 def _credenciais_painel_usuarios():
-    """Lê usuário/senha do painel de variáveis de ambiente (ADMIN_USERNAME e
-    ADMIN_PASSWORD). Se não existirem (ex: rodando local sem configurar),
-    usa 'tcc' / 'yasmin123' como padrão."""
-    usuario = os.environ.get('ADMIN_USERNAME', 'tcc')
-    senha = os.environ.get('ADMIN_PASSWORD', 'yasmin123')
-    return usuario, senha
+    """Lê usuário/senha do painel das variáveis de ambiente ADMIN_USERNAME e
+    ADMIN_PASSWORD. Sem elas o painel fica DESATIVADO (não existe senha padrão)."""
+    return os.environ.get('ADMIN_USERNAME', ''), os.environ.get('ADMIN_PASSWORD', '')
+
+
+def _iguais(a, b):
+    return secrets.compare_digest(a.encode('utf-8'), b.encode('utf-8'))
 
 
 def painel_usuarios_login(request):
@@ -619,18 +688,29 @@ def painel_usuarios_login(request):
 
     erro = None
     if request.method == 'POST':
-        usuario_digitado = request.POST.get('usuario', '')
-        senha_digitada = request.POST.get('senha', '')
+        chave = f'painel:{ip_do_cliente(request)}'
         usuario_correto, senha_correta = _credenciais_painel_usuarios()
 
-        if usuario_digitado == usuario_correto and senha_digitada == senha_correta:
-            request.session[PAINEL_USUARIOS_SESSION_KEY] = True
-            return redirect('painel_usuarios_list')
-        erro = 'Usuário ou senha incorretos.'
+        if excedeu_limite(chave, PAINEL_MAX_TENTATIVAS, PAINEL_JANELA_SEGUNDOS):
+            erro = 'Muitas tentativas. Aguarde 15 minutos para tentar de novo.'
+        elif not usuario_correto or not senha_correta:
+            erro = 'Painel desativado: defina ADMIN_USERNAME e ADMIN_PASSWORD no ambiente.'
+        else:
+            usuario_digitado = request.POST.get('usuario', '')
+            senha_digitada = request.POST.get('senha', '')
+            ok_usuario = _iguais(usuario_digitado, usuario_correto)
+            ok_senha = _iguais(senha_digitada, senha_correta)  # sempre compara os dois
+            if ok_usuario and ok_senha:
+                limpar_limite(chave)
+                request.session.cycle_key()
+                request.session[PAINEL_USUARIOS_SESSION_KEY] = True
+                return redirect('painel_usuarios_list')
+            erro = 'Usuário ou senha incorretos.'
 
     return render(request, 'login_adm.html', {'erro': erro})
 
 
+@require_POST
 def painel_usuarios_logout(request):
     request.session.pop(PAINEL_USUARIOS_SESSION_KEY, None)
     return redirect('login_adm')
@@ -653,11 +733,16 @@ def painel_usuarios_list(request):
 def painel_usuarios_delete(request, pk):
     """Exclui um usuário. Como todos os modelos do sistema apontam pro
     usuário com on_delete=CASCADE, excluir aqui apaga também TODOS os
-    produtos, reservas, fornecedores, despesas e pratos daquela conta."""
+    produtos, reservas, fornecedores, despesas e pratos daquela conta.
+    Contas de administrador (superusuário/staff) não podem ser excluídas por aqui."""
     if not request.session.get(PAINEL_USUARIOS_SESSION_KEY):
         return redirect('login_adm')
 
     usuario = get_object_or_404(User, pk=pk)
+
+    if usuario.is_superuser or usuario.is_staff:
+        messages.error(request, 'Contas de administrador não podem ser excluídas por este painel.')
+        return redirect('painel_usuarios_list')
 
     if request.method == 'POST':
         nome = usuario.username

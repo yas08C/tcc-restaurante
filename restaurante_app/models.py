@@ -1,27 +1,57 @@
 import secrets
-from django.db import models
+from decimal import Decimal
+
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.db.models import OuterRef, Q, Subquery
+from django.utils import timezone
 
 MESA_CHOICES = [(i, f'Mesa {i}') for i in range(1, 16)]
 
+# Quantidades aceitam casas decimais (0,5 kg, 1,25 L...).
+QTD = {'max_digits': 10, 'decimal_places': 2}
 
-class ItemEstoque(models.Model):
-    UNIDADE_CHOICES = [
-        ('kg', 'Quilograma (kg)'),
-        ('l', 'Litro (L)'),
-        ('un', 'Unidade'),
-    ]
 
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='itens_estoque')
-    nome = models.CharField(max_length=100)
-    quantidade = models.DecimalField(max_digits=10, decimal_places=2)
-    unidade = models.CharField(max_length=2, choices=UNIDADE_CHOICES, default='un')
+def gerar_slug_publico():
+    return secrets.token_hex(5)
+
+
+class PerfilRestaurante(models.Model):
+    """Dados públicos do restaurante. O slug aleatório é usado nos links do
+    cliente, para não expor o nome de usuário (login) na URL."""
+
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    slug_publico = models.CharField(max_length=20, unique=True, default=gerar_slug_publico, editable=False)
+    nome_exibicao = models.CharField(
+        'Nome exibido ao cliente', max_length=80, blank=True,
+        help_text='Aparece no topo do cardápio do cliente. Deixe em branco para não mostrar nome.',
+    )
+
+    class Meta:
+        verbose_name = 'Perfil do Restaurante'
+        verbose_name_plural = 'Perfis dos Restaurantes'
 
     def __str__(self):
-        return f'{self.nome} ({self.quantidade} {self.get_unidade_display()})'
+        return f'Perfil de {self.usuario}'
+
+
+def perfil_de(usuario):
+    perfil, _ = PerfilRestaurante.objects.get_or_create(usuario=usuario)
+    return perfil
+
+
+class ProdutoQuerySet(models.QuerySet):
+    def com_ultimo_preco(self):
+        """Anota o preço da compra mais recente, evitando uma query por produto."""
+        ultima = Fornecedor.objects.filter(produto=OuterRef('pk')).order_by('-criado_em', '-pk')
+        return self.annotate(ultimo_preco=Subquery(ultima.values('preco_unidade')[:1]))
 
 
 class Produto(models.Model):
+    objects = ProdutoQuerySet.as_manager()
+
     UNIDADE_CHOICES = [
         ('kg', 'Quilograma (kg)'),
         ('l', 'Litro (L)'),
@@ -44,13 +74,14 @@ class Produto(models.Model):
     categoria = models.CharField(
         'Categoria', max_length=20, choices=CATEGORIA_CHOICES, default='outros'
     )
-    quantidade = models.PositiveIntegerField(default=0)
-    quantidade_minima = models.PositiveIntegerField(
-        'Quantidade mínima', default=5,
-        help_text='Abaixo desse valor, um alerta de estoque baixo é disparado.'
+    quantidade = models.DecimalField(default=0, validators=[MinValueValidator(0)], **QTD)
+    quantidade_minima = models.DecimalField(
+        'Quantidade mínima', default=5, validators=[MinValueValidator(0)],
+        help_text='Quando o estoque chegar a esse valor (ou ficar abaixo dele), um alerta de estoque baixo é disparado.',
+        **QTD
     )
-    quantidade_maxima = models.PositiveIntegerField(
-        'Quantidade máxima', null=True, blank=True,
+    quantidade_maxima = models.DecimalField(
+        'Quantidade máxima', null=True, blank=True, validators=[MinValueValidator(0)], **QTD,
         help_text='Acima desse valor, indica estoque excessivo (compra além do necessário). Opcional.'
     )
     unidade = models.CharField('Unidade', max_length=2, choices=UNIDADE_CHOICES, default='un')
@@ -59,14 +90,24 @@ class Produto(models.Model):
 
     class Meta:
         ordering = ['validade']
+        constraints = [
+            models.CheckConstraint(condition=Q(quantidade__gte=0), name='produto_quantidade_nao_negativa'),
+        ]
 
     def __str__(self):
         return self.nome
 
+    def clean(self):
+        super().clean()
+        if self.quantidade_maxima is not None and self.quantidade_minima is not None \
+                and self.quantidade_maxima < self.quantidade_minima:
+            raise ValidationError({
+                'quantidade_maxima': 'A quantidade máxima não pode ser menor que a mínima.'
+            })
+
     @property
     def vencido(self):
-        from datetime import date
-        return self.validade < date.today()
+        return self.validade < timezone.localdate()
 
     @property
     def estoque_excedente(self):
@@ -79,7 +120,9 @@ class Produto(models.Model):
     def custo_unitario_atual(self):
         """Preço da unidade da compra mais recente registrada para este produto
         (Fornecedor), usado para estimar o valor do estoque parado."""
-        ultima_compra = self.compras.order_by('-criado_em').first()
+        if hasattr(self, 'ultimo_preco'):  # vem anotado por com_ultimo_preco()
+            return self.ultimo_preco
+        ultima_compra = self.compras.order_by('-criado_em', '-pk').first()
         return ultima_compra.preco_unidade if ultima_compra else None
 
     @property
@@ -93,14 +136,23 @@ class Produto(models.Model):
 
 
 class Fornecedor(models.Model):
-    """Registro de compra feita a um fornecedor. Cada registro pertence a um usuário."""
+    """Registro de compra feita a um fornecedor. Cada registro pertence a um usuário.
+
+    A compra guarda a PRÓPRIA quantidade comprada: o preço total é
+    quantidade × preço da unidade e nunca muda por causa de vendas posteriores.
+    Ao registrar a compra, a quantidade é somada ao estoque do produto
+    (ver servicos.registrar_compra)."""
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fornecedores')
+    # SET_NULL: excluir o produto NÃO apaga o histórico financeiro das compras.
     produto = models.ForeignKey(
-        Produto, on_delete=models.CASCADE, related_name='compras',
+        Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='compras',
         verbose_name='Produto comprado'
     )
+    nome_produto = models.CharField(max_length=120, blank=True, editable=False)
     nome_fornecedor = models.CharField('Nome do fornecedor', max_length=120)
-    preco_unidade = models.DecimalField('Preço da unidade', max_digits=10, decimal_places=2)
+    quantidade = models.DecimalField('Quantidade comprada', default=0, validators=[MinValueValidator(0)], **QTD)
+    preco_unidade = models.DecimalField('Preço da unidade', max_digits=10, decimal_places=2,
+                                        validators=[MinValueValidator(0)])
     preco_total = models.DecimalField('Preço total pago', max_digits=10, decimal_places=2, editable=False)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -108,12 +160,13 @@ class Fornecedor(models.Model):
         ordering = ['-criado_em']
 
     def __str__(self):
-        return f'{self.produto.nome} - {self.nome_fornecedor}'
+        return f'{self.nome_produto or self.produto} - {self.nome_fornecedor}'
 
     def save(self, *args, **kwargs):
-        # Preço total = quantidade que já está cadastrada no estoque do produto × preço da unidade.
-        # Sempre recalculado no servidor, nunca confiando no que veio do formulário.
-        self.preco_total = self.produto.quantidade * self.preco_unidade
+        if self.produto_id and not self.nome_produto:
+            self.nome_produto = self.produto.nome
+        # Sempre recalculado no servidor, com a quantidade DESTA compra.
+        self.preco_total = (Decimal(str(self.quantidade)) * Decimal(str(self.preco_unidade))).quantize(Decimal('0.01'))
         super().save(*args, **kwargs)
 
 
@@ -130,6 +183,9 @@ class Reserva(models.Model):
 
     VALOR_POR_PESSOA = 50
 
+    # Cada reserva ocupa a mesa por este tempo (19:00 e 19:30 na mesma mesa conflitam).
+    DURACAO_HORAS = 2
+
     usuario = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='reservas', null=True, blank=True
     )
@@ -138,7 +194,9 @@ class Reserva(models.Model):
     cliente_telefone = models.CharField(max_length=20, blank=True)
     data = models.DateField()
     horario = models.TimeField(help_text='Horário de funcionamento: 18:00 até 01:00')
-    quantidade_pessoas = models.PositiveSmallIntegerField('Quantidade de pessoas', default=1)
+    quantidade_pessoas = models.PositiveSmallIntegerField(
+        'Quantidade de pessoas', default=1, validators=[MinValueValidator(1)]
+    )
     tipo_pagamento = models.CharField(
         'Tipo de pagamento', max_length=10, choices=PAGAMENTO_CHOICES, default='dinheiro'
     )
@@ -147,10 +205,29 @@ class Reserva(models.Model):
 
     class Meta:
         ordering = ['data', 'horario', 'mesa']
-        unique_together = ('usuario', 'mesa', 'data', 'horario')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario', 'mesa', 'data', 'horario'], name='reserva_unica_por_usuario'
+            ),
+            # Em SQL, NULL é sempre "diferente" de NULL; esta regra cobre reservas sem usuário.
+            models.UniqueConstraint(
+                fields=['mesa', 'data', 'horario'], condition=Q(usuario__isnull=True),
+                name='reserva_unica_sem_usuario',
+            ),
+        ]
 
     def __str__(self):
         return f'Mesa {self.mesa} - {self.data} {self.horario} - {self.cliente_nome}'
+
+    @staticmethod
+    def inicio_efetivo(data, horario):
+        """Momento real da reserva. O campo `data` é o DIA DO EXPEDIENTE: uma
+        reserva às 00:30 do expediente de sexta acontece na madrugada de sábado."""
+        from datetime import datetime, time, timedelta
+        momento = datetime.combine(data, horario)
+        if horario <= time(1, 0):
+            momento += timedelta(days=1)
+        return timezone.make_aware(momento)
 
     @property
     def valor(self):
@@ -175,9 +252,10 @@ class DespesaFixa(models.Model):
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='despesas_fixas')
     tipo = models.CharField('Tipo', max_length=10, choices=TIPO_CHOICES)
-    valor = models.DecimalField('Valor', max_digits=10, decimal_places=2)
+    valor = models.DecimalField('Valor', max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal('0.01'))])
     mes = models.PositiveSmallIntegerField('Mês', choices=MESES_CHOICES)
-    ano = models.PositiveSmallIntegerField('Ano')
+    ano = models.PositiveSmallIntegerField('Ano', validators=[MinValueValidator(2000), MaxValueValidator(2100)])
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -187,6 +265,11 @@ class DespesaFixa(models.Model):
 
     def __str__(self):
         return f'{self.get_tipo_display()} - {self.get_mes_display()}/{self.ano} - R$ {self.valor}'
+
+
+# Faixas iniciais (°C) de uma zona criada automaticamente pelo primeiro envio do sensor.
+FAIXA_PADRAO_REFRIGERADO = (Decimal('0'), Decimal('8'))
+FAIXA_PADRAO_FREEZER = (Decimal('-25'), Decimal('-15'))
 
 
 class ZonaTemperatura(models.Model):
@@ -307,14 +390,25 @@ class MovimentacaoEstoque(models.Model):
         ('saida', 'Saída (uso/consumo)'),
         ('perda', 'Perda/Descarte'),
         ('ajuste', 'Ajuste de contagem'),
+        ('estorno', 'Estorno (pedido cancelado)'),
     ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='movimentacoes_estoque')
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name='movimentacoes')
+    # SET_NULL: o histórico fica mesmo que o produto seja excluído.
+    produto = models.ForeignKey(
+        Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimentacoes'
+    )
+    nome_produto = models.CharField(max_length=120, blank=True, editable=False)
+    pedido = models.ForeignKey(
+        'Pedido', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimentacoes'
+    )
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
-    quantidade = models.PositiveIntegerField(help_text='Quantidade movimentada (sempre um valor positivo).')
-    quantidade_resultante = models.PositiveIntegerField(
-        'Quantidade em estoque após o movimento', editable=False
+    quantidade = models.DecimalField(
+        validators=[MinValueValidator(0)],
+        help_text='Quantidade movimentada (sempre um valor positivo).', **QTD
+    )
+    quantidade_resultante = models.DecimalField(
+        'Quantidade em estoque após o movimento', editable=False, **QTD
     )
     observacao = models.CharField(max_length=200, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -325,7 +419,16 @@ class MovimentacaoEstoque(models.Model):
         verbose_name_plural = 'Movimentações de Estoque'
 
     def __str__(self):
-        return f'{self.get_tipo_display()} - {self.produto.nome} ({self.quantidade})'
+        return f'{self.get_tipo_display()} - {self.nome_produto or self.produto} ({self.quantidade})'
+
+    def save(self, *args, **kwargs):
+        if self.produto_id and not self.nome_produto:
+            self.nome_produto = self.produto.nome
+        super().save(*args, **kwargs)
+
+    @property
+    def unidade_display(self):
+        return self.produto.get_unidade_display() if self.produto_id else ''
 
 
 class Prato(models.Model):
@@ -346,11 +449,13 @@ class Prato(models.Model):
 
     def pode_ser_vendido(self):
         """True se houver estoque suficiente de TODOS os insumos da ficha
-        técnica para produzir mais uma unidade deste prato."""
-        for item in self.itens_ficha_tecnica.select_related('produto'):
-            if item.produto.quantidade < item.quantidade_usada:
-                return False
-        return True
+        técnica para produzir mais uma unidade deste prato. Prato SEM ficha
+        técnica não pode ser vendido (nada baixaria do estoque).
+        Use prefetch_related('itens_ficha_tecnica__produto') nas listagens."""
+        itens = list(self.itens_ficha_tecnica.all())
+        if not itens:
+            return False
+        return all(item.produto.quantidade >= item.quantidade_usada for item in itens)
 
 
 class ItemFichaTecnica(models.Model):
@@ -359,8 +464,9 @@ class ItemFichaTecnica(models.Model):
 
     prato = models.ForeignKey(Prato, on_delete=models.CASCADE, related_name='itens_ficha_tecnica')
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name='usado_em_pratos')
-    quantidade_usada = models.PositiveIntegerField(
-        help_text='Quantidade deste produto consumida ao preparar 1 unidade do prato.'
+    quantidade_usada = models.DecimalField(
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Quantidade deste produto consumida ao preparar 1 unidade do prato.', **QTD
     )
 
     class Meta:
@@ -373,16 +479,22 @@ class ItemFichaTecnica(models.Model):
 
 
 class Pedido(models.Model):
-    """Pedido feito pelo CLIENTE dentro do restaurante (interface do cliente).
-    Isolado por restaurante (usuario) — cada restaurante só vê os próprios pedidos."""
+    """Pedido feito pelo CLIENTE na mesa (ou venda de balcão registrada pelo
+    restaurante, com mesa vazia). Isolado por restaurante (usuario).
+
+    Fluxo: recebido (aguardando o restaurante) → confirmado (estoque baixado)
+    → entregue. Pode ser cancelado antes de entregue; se já estava confirmado,
+    o estoque é devolvido. Só pedidos ENTREGUES contam como receita."""
 
     STATUS_CHOICES = [
         ('recebido', 'Recebido'),
+        ('confirmado', 'Confirmado'),
         ('entregue', 'Entregue'),
+        ('cancelado', 'Cancelado'),
     ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pedidos')
-    mesa = models.PositiveSmallIntegerField(choices=MESA_CHOICES)
+    mesa = models.PositiveSmallIntegerField(choices=MESA_CHOICES, null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='recebido')
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -390,11 +502,15 @@ class Pedido(models.Model):
         ordering = ['-criado_em']
 
     def __str__(self):
-        return f'Pedido #{self.pk} - Mesa {self.mesa}'
+        return f'Pedido #{self.pk} - {self.mesa_display}'
+
+    @property
+    def mesa_display(self):
+        return f'Mesa {self.mesa}' if self.mesa else 'Balcão'
 
     @property
     def total(self):
-        return sum((item.subtotal for item in self.itens.all()), start=0)
+        return sum((item.subtotal for item in self.itens.all()), start=Decimal('0'))
 
 
 class ItemPedido(models.Model):

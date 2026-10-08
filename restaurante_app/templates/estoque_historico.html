@@ -21,10 +21,10 @@
         {% for mov in movimentacoes %}
         <tr>
             <td>{{ mov.criado_em|date:"d/m/Y H:i" }}</td>
-            <td>{{ mov.produto.nome }}</td>
+            <td>{{ mov.nome_produto }}</td>
             <td>{{ mov.get_tipo_display }}</td>
-            <td>{{ mov.quantidade }} {{ mov.produto.get_unidade_display }}</td>
-            <td>{{ mov.quantidade_resultante }} {{ mov.produto.get_unidade_display }}</td>
+            <td>{{ mov.quantidade|floatformat:"-2" }} {{ mov.unidade_display }}</td>
+            <td>{{ mov.quantidade_resultante|floatformat:"-2" }} {{ mov.unidade_display }}</td>
             <td>{{ mov.observacao|default:"—" }}</td>
         </tr>
         {% empty %}

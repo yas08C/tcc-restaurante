@@ -8,7 +8,7 @@
     <thead>
         <tr>
             <th>Produto</th>
-            <th>Qtd. no estoque</th>
+            <th>Qtd. comprada</th>
             <th>Fornecedor</th>
             <th>Preço unidade</th>
             <th>Preço total pago</th>
@@ -18,8 +18,8 @@
     <tbody>
         {% for obj in fornecedores %}
         <tr>
-            <td>{{ obj.produto.nome }}</td>
-            <td>{{ obj.produto.quantidade }}</td>
+            <td>{{ obj.nome_produto|default:obj.produto }}</td>
+            <td>{{ obj.quantidade|floatformat:"-2" }}</td>
             <td>{{ obj.nome_fornecedor }}</td>
             <td>R$ {{ obj.preco_unidade }}</td>
             <td>R$ {{ obj.preco_total }}</td>
@@ -33,4 +33,4 @@
         {% endfor %}
     </tbody>
 </table>
-{% endblock %}
+{% endblock %}

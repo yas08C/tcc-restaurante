@@ -5,19 +5,26 @@
 {% if not mesa %}
     <section class="cliente-bloco">
         <h1>Bem-vindo! 🍽️</h1>
-        <p>Em qual mesa você está?</p>
-        <form method="post" action="{% url 'cliente_mesa' restaurante.username %}" class="grade-mesas">
-            {% csrf_token %}
-            {% for numero, nome in mesas %}
-                <button type="submit" name="mesa" value="{{ numero }}" class="btn-mesa">{{ numero }}</button>
-            {% endfor %}
-        </form>
+        <p><strong>Para fazer o pedido, escaneie o QR code da sua mesa.</strong> O cardápio abaixo é só para consulta.</p>
+    </section>
+    <section class="cliente-bloco cliente-lista-pratos">
+        {% for info in pratos_info %}
+        <article class="prato-card {% if not info.disponivel %}indisponivel{% endif %}">
+            <div class="prato-info">
+                <h3>{{ info.prato.nome }}</h3>
+                <p class="prato-preco">R$ {{ info.prato.preco_venda|floatformat:2 }}</p>
+            </div>
+            {% if not info.disponivel %}<span class="prato-indisponivel">Indisponível</span>{% endif %}
+        </article>
+        {% empty %}
+        <p>O cardápio ainda não tem pratos.</p>
+        {% endfor %}
     </section>
 {% else %}
     <div class="cliente-cabecalho">
         <h1>Cardápio</h1>
         <span class="cliente-mesa-atual">
-            Mesa {{ mesa }} · <a href="?trocar=1">trocar</a>
+            Mesa {{ mesa }}
         </span>
     </div>
 
@@ -35,13 +42,13 @@
                 {% if info.disponivel %}
                 <div class="prato-acoes">
                     {% if info.quantidade > 0 %}
-                    <form method="post" action="{% url 'cliente_remover' restaurante.username info.prato.pk %}">
+                    <form method="post" action="{% url 'cliente_remover' slug info.prato.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn-qtd" aria-label="Remover um {{ info.prato.nome }}">−</button>
                     </form>
                     <span class="prato-qtd">{{ info.quantidade }}</span>
                     {% endif %}
-                    <form method="post" action="{% url 'cliente_adicionar' restaurante.username info.prato.pk %}">
+                    <form method="post" action="{% url 'cliente_adicionar' slug info.prato.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn-qtd btn-mais" aria-label="Adicionar um {{ info.prato.nome }}">+</button>
                     </form>
@@ -76,7 +83,7 @@
                     <tr><td colspan="2"><strong>Total</strong></td><td><strong>R$ {{ total|floatformat:2 }}</strong></td></tr>
                 </tfoot>
             </table>
-            <form method="post" action="{% url 'cliente_confirmar' restaurante.username %}">
+            <form method="post" action="{% url 'cliente_confirmar' slug %}">
                 {% csrf_token %}
                 <button type="submit" class="btn-confirmar">Confirmar pedido ({{ total_itens }} {% if total_itens == 1 %}item{% else %}itens{% endif %})</button>
             </form>

@@ -1,0 +1,4 @@
+# Dependências extras para rodar localmente com MySQL (não vão para o Render,
+# porque o mysqlclient precisa de bibliotecas do sistema para compilar).
+-r requirements.txt
+mysqlclient==2.2.8

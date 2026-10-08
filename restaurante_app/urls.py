@@ -53,6 +53,7 @@ urlpatterns = [
      #Conectar esp32
     path('temperatura/', views.temperatura_view, name='temperatura'),
     path('api/temperatura/', views.receber_temperatura, name='api_temperatura'),
+    path('api/temperatura/atual/', views.temperatura_dados, name='temperatura_dados'),
 
     # Notificações (banner de alertas)
     path('api/notificacoes/', views.notificacoes_ativas, name='notificacoes_ativas'),
@@ -65,13 +66,15 @@ urlpatterns = [
 
     # Pedidos recebidos (área do restaurante, exige login)
     path('pedidos/', views_cliente.pedido_list, name='pedido_list'),
+    path('pedidos/<int:pk>/confirmar/', views_cliente.pedido_confirmar, name='pedido_confirmar'),
+    path('pedidos/<int:pk>/cancelar/', views_cliente.pedido_cancelar, name='pedido_cancelar'),
     path('pedidos/<int:pk>/entregar/', views_cliente.pedido_entregar, name='pedido_entregar'),
 
-    # Interface do CLIENTE (pública, sem login): cardápio + pedido na mesa
-    path('cliente/<str:username>/', views_cliente.cliente_cardapio, name='cliente_cardapio'),
-    path('cliente/<str:username>/mesa/', views_cliente.cliente_mesa, name='cliente_mesa'),
-    path('cliente/<str:username>/adicionar/<int:pk>/', views_cliente.cliente_adicionar, name='cliente_adicionar'),
-    path('cliente/<str:username>/remover/<int:pk>/', views_cliente.cliente_remover, name='cliente_remover'),
-    path('cliente/<str:username>/confirmar/', views_cliente.cliente_confirmar, name='cliente_confirmar'),
-    path('cliente/<str:username>/pedido/<int:pedido_id>/', views_cliente.cliente_pedido_confirmado, name='cliente_pedido_confirmado'),
+    # Interface do CLIENTE (pública, sem login): cardápio + pedido na mesa.
+    # O restaurante é identificado por um código aleatório, não pelo login.
+    path('cliente/<slug:slug>/', views_cliente.cliente_cardapio, name='cliente_cardapio'),
+    path('cliente/<slug:slug>/adicionar/<int:pk>/', views_cliente.cliente_adicionar, name='cliente_adicionar'),
+    path('cliente/<slug:slug>/remover/<int:pk>/', views_cliente.cliente_remover, name='cliente_remover'),
+    path('cliente/<slug:slug>/confirmar/', views_cliente.cliente_confirmar, name='cliente_confirmar'),
+    path('cliente/<slug:slug>/pedido/<int:pedido_id>/', views_cliente.cliente_pedido_confirmado, name='cliente_pedido_confirmado'),
 ]

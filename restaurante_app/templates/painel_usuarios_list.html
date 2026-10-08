@@ -3,7 +3,10 @@
 {% block content %}
 <h1>Usuários cadastrados</h1>
 <p style="margin-bottom: 15px;">
-    <a href="{% url 'painel_usuarios_logout' %}" class="btn btn-success">Sair do painel</a>
+    <form method="post" action="{% url 'painel_usuarios_logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Sair do painel</button>
+    </form>
 </p>
 
 <table>
@@ -26,7 +29,11 @@
             <td>{{ usuario.last_login|date:"d/m/Y H:i"|default:"Nunca entrou" }}</td>
             <td>{{ usuario.total_produtos }}</td>
             <td>
-                <a href="{% url 'painel_usuarios_delete' usuario.pk %}" class="btn btn-danger">Excluir</a>
+                {% if usuario.is_superuser or usuario.is_staff %}
+                    <span style="color:#999;">administrador</span>
+                {% else %}
+                    <a href="{% url 'painel_usuarios_delete' usuario.pk %}" class="btn btn-danger">Excluir</a>
+                {% endif %}
             </td>
         </tr>
         {% empty %}

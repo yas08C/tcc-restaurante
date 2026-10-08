@@ -45,19 +45,21 @@
             <td>{{ obj.nome }}</td>
             <td>{{ obj.get_categoria_display }}</td>
             <td class="{% if obj.quantidade <= obj.quantidade_minima %}estoque-baixo{% endif %} {% if obj.estoque_excedente %}estoque-excedente{% endif %}">
-                {{ obj.quantidade }} {{ obj.get_unidade_display }}
+                {{ obj.quantidade|floatformat:"-2" }} {{ obj.get_unidade_display }}
                 {% if obj.quantidade <= obj.quantidade_minima %}⚠️ baixo{% endif %}
                 {% if obj.estoque_excedente %}📦 excesso{% endif %}
             </td>
-            <td>{{ obj.quantidade_minima }}</td>
-            <td>{{ obj.quantidade_maxima|default:"—" }}</td>
+            <td>{{ obj.quantidade_minima|floatformat:"-2" }}</td>
+            <td>{{ obj.quantidade_maxima|floatformat:"-2"|default:"—" }}</td>
             <td>{{ obj.validade }} {% if obj.vencido %}⚠️ vencido{% endif %}</td>
             <td>
-                {% if obj.valor_em_estoque is not None %}
-                    R$ {{ obj.valor_em_estoque|floatformat:2 }}
+                {% with valor=obj.valor_em_estoque %}
+                {% if valor is not None %}
+                    R$ {{ valor|floatformat:2 }}
                 {% else %}
                     <span style="color:#999;">sem compra registrada</span>
                 {% endif %}
+                {% endwith %}
             </td>
             <td>
                 <a href="{% url 'produto_update' obj.pk %}" class="btn btn-primary">Editar</a>
@@ -65,7 +67,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7">Nenhum produto cadastrado.</td></tr>
+        <tr><td colspan="8">Nenhum produto cadastrado.</td></tr>
         {% endfor %}
     </tbody>
 </table>
