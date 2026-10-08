@@ -1,3 +1,9 @@
+/* ===== Monitoramento de Temperatura =====
+   Verde  = temperatura dentro da faixa (entre mínima e máxima)
+   Vermelho = temperatura crítica (acima da máxima ou abaixo da mínima)
+   Cinza  = ainda sem leitura do sensor
+*/
+
 .grid-zonas {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -5,62 +11,81 @@
     margin-top: 24px;
 }
 
+/* Cores padrão (sem leitura). Cada status só troca estas duas variáveis. */
 .tabela-zona {
-    border: 2px solid #E9A0BB;
-    border-radius: 8px;
+    --cor: #555555;
+    --cor-escura: #3A3A3A;
+
     width: 100%;
+    margin-bottom: 0;
     text-align: center;
-    border-collapse: collapse;
-    background-color: #FFF0F5;
+    border: 2px solid var(--cor);
+    border-radius: 8px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    background-color: var(--cor-escura);
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.tabela-zona.ok {
+    --cor: #2E7D32;
+    --cor-escura: #1B5E20;
+}
+
+.tabela-zona.fora {
+    --cor: #C62828;
+    --cor-escura: #7F0000;
+    animation: piscar-critico 1.2s infinite;
 }
 
 .tabela-zona caption {
+    caption-side: top;
     font-weight: bold;
     padding: 8px;
-    background-color: #D66A93;
+    background-color: var(--cor);
     color: #FFFFFF;
     border-radius: 6px 6px 0 0;
 }
 
+/* Sobrescreve o "table th" / "table td" do style.css do tema */
 .tabela-zona th,
 .tabela-zona td {
+    text-align: center;
     padding: 10px;
-    color: #3B2A2E;
+    color: #FFFFFF;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-.tabela-zona .linha-atual {
+.tabela-zona th {
+    background-color: var(--cor-escura);
+}
+
+.tabela-zona td {
+    background-color: var(--cor);
+}
+
+.tabela-zona .linha-atual th,
+.tabela-zona .linha-atual td {
     font-size: 1.2em;
     font-weight: bold;
-    color: #2B1A1F;
 }
 
-/* Dentro da faixa (entre mínima e máxima): verde */
-.tabela-zona.ok {
-    border-color: #2E7D32;
-    background-color: #E8F5E9;
+.tabela-zona .linha-status td {
+    font-size: 0.85em;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-bottom: none;
+    background-color: var(--cor-escura);
 }
 
-.tabela-zona.ok caption {
-    background-color: #2E7D32;
-}
-
-/* Fora da faixa (acima da máxima ou abaixo da mínima): vermelho */
-.tabela-zona.fora {
-    border-color: #C62828;
-    background-color: #FFEBEE;
-    animation: piscar 1.2s infinite;
-}
-
-.tabela-zona.fora caption {
-    background-color: #C62828;
-}
-
-@keyframes piscar {
-    50% { border-color: #FFFFFF; }
+@keyframes piscar-critico {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+    50%      { box-shadow: 0 0 14px 3px rgba(229, 57, 53, 0.9); border-color: #FFFFFF; }
 }
 
 .icone-alerta {
-    color: #E53935;
-    font-size: 1.2em;
+    font-size: 1.1em;
     margin-left: 4px;
 }
