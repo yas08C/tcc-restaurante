@@ -1,5 +1,7 @@
 from datetime import time
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django.forms import inlineformset_factory
 from .models import (
     Produto, Reserva, Fornecedor, ItemEstoque, DespesaFixa, MovimentacaoEstoque,
@@ -149,3 +151,31 @@ ItemFichaTecnicaFormSet = inlineformset_factory(
     extra=3,
     can_delete=True,
 )
+
+
+class CadastroForm(UserCreationForm):
+    """Formulário de cadastro de novo restaurante (usuário + senha).
+    Mensagens de erro em português e checagem de usuário duplicado
+    ignorando maiúsculas/minúsculas (Yas == yas)."""
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ('username',)
+        labels = {'username': 'Usuário'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].label = 'Usuário'
+        self.fields['username'].help_text = 'Letras, números e @/./+/-/_ (máx. 150).'
+        self.fields['username'].widget.attrs.update({'autofocus': True, 'autocomplete': 'username'})
+        self.fields['password1'].label = 'Senha'
+        self.fields['password1'].help_text = 'Mínimo de 8 caracteres, não pode ser só números nem muito comum.'
+        self.fields['password1'].widget.attrs['autocomplete'] = 'new-password'
+        self.fields['password2'].label = 'Confirmar senha'
+        self.fields['password2'].help_text = 'Digite a mesma senha novamente.'
+        self.fields['password2'].widget.attrs['autocomplete'] = 'new-password'
+        self.error_messages['password_mismatch'] = 'As duas senhas não são iguais.'
+        self.fields['username'].error_messages['unique'] = 'Já existe um usuário com esse nome.'
+        self.fields['username'].error_messages['required'] = 'Informe o nome de usuário.'
+        self.fields['password1'].error_messages['required'] = 'Informe a senha.'
+        self.fields['password2'].error_messages['required'] = 'Confirme a senha.'

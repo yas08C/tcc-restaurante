@@ -22,21 +22,30 @@ from .models import (
 )
 from .forms import (
     ProdutoForm, ReservaForm, FornecedorForm, DespesaFixaForm,
-    MovimentacaoEstoqueForm, PratoForm, ItemFichaTecnicaFormSet,
+    MovimentacaoEstoqueForm, PratoForm, ItemFichaTecnicaFormSet, CadastroForm,
 )
 from .utils import verificar_alertas_estoque
-from django.db import transaction
+from django.db import transaction, IntegrityError
+from django.utils.http import url_has_allowed_host_and_scheme
 
 
 # ---------- AUTENTICAÇÃO ----------
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            user = form.get_user()
-            login(request, user)
+            login(request, form.get_user())
+            proximo = request.GET.get('next') or request.POST.get('next')
+            if proximo and url_has_allowed_host_and_scheme(
+                proximo, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(proximo)
             return redirect('home')
+        messages.error(request, 'Usuário ou senha incorretos.')
     else:
         form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
@@ -48,14 +57,25 @@ def logout_view(request):
 
 
 def cadastro_view(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CadastroForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('home')
+            try:
+                with transaction.atomic():
+                    user = form.save()
+            except IntegrityError:
+                form.add_error('username', 'Já existe um usuário com esse nome.')
+            else:
+                # backend explícito: evita erro "multiple authentication backends"
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                messages.success(request, f'Conta criada com sucesso! Bem-vindo(a), {user.username}.')
+                return redirect('home')
+        messages.error(request, 'Não foi possível criar a conta. Corrija os erros abaixo.')
     else:
-        form = UserCreationForm()
+        form = CadastroForm()
     return render(request, 'cadastro.html', {'form': form})
 
 
