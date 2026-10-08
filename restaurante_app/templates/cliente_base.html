@@ -1,0 +1,32 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cardápio{% endblock %} — {{ restaurante.username }}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'cliente.css' %}">
+</head>
+<body>
+    <header class="cliente-topo">
+        <img src="{% static 'urso-sushi.png' %}" alt="Logo" class="cliente-logo">
+        <span class="cliente-nome">{{ restaurante.username }}</span>
+    </header>
+
+    <main class="cliente-container">
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="cliente-rodape">
+        <p>&copy; {% now "Y" %} Sistema do Restaurante</p>
+    </footer>
+</body>
+</html>

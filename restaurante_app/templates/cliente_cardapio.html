@@ -1,0 +1,90 @@
+{% extends 'cliente_base.html' %}
+{% block title %}Cardápio{% endblock %}
+{% block content %}
+
+{% if not mesa %}
+    <section class="cliente-bloco">
+        <h1>Bem-vindo! 🍽️</h1>
+        <p>Em qual mesa você está?</p>
+        <form method="post" action="{% url 'cliente_mesa' restaurante.username %}" class="grade-mesas">
+            {% csrf_token %}
+            {% for numero, nome in mesas %}
+                <button type="submit" name="mesa" value="{{ numero }}" class="btn-mesa">{{ numero }}</button>
+            {% endfor %}
+        </form>
+    </section>
+{% else %}
+    <div class="cliente-cabecalho">
+        <h1>Cardápio</h1>
+        <span class="cliente-mesa-atual">
+            Mesa {{ mesa }} · <a href="?trocar=1">trocar</a>
+        </span>
+    </div>
+
+    <div class="cliente-layout">
+
+        <!-- CARDÁPIO: só visualizar e adicionar/remover do pedido -->
+        <section class="cliente-bloco cliente-lista-pratos">
+            {% for info in pratos_info %}
+            <article class="prato-card {% if not info.disponivel %}indisponivel{% endif %}" id="prato-{{ info.prato.pk }}">
+                <div class="prato-info">
+                    <h3>{{ info.prato.nome }}</h3>
+                    <p class="prato-preco">R$ {{ info.prato.preco_venda|floatformat:2 }}</p>
+                </div>
+
+                {% if info.disponivel %}
+                <div class="prato-acoes">
+                    {% if info.quantidade > 0 %}
+                    <form method="post" action="{% url 'cliente_remover' restaurante.username info.prato.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-qtd" aria-label="Remover um {{ info.prato.nome }}">−</button>
+                    </form>
+                    <span class="prato-qtd">{{ info.quantidade }}</span>
+                    {% endif %}
+                    <form method="post" action="{% url 'cliente_adicionar' restaurante.username info.prato.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-qtd btn-mais" aria-label="Adicionar um {{ info.prato.nome }}">+</button>
+                    </form>
+                </div>
+                {% else %}
+                <span class="prato-indisponivel">Indisponível</span>
+                {% endif %}
+            </article>
+            {% empty %}
+            <p>O cardápio ainda não tem pratos.</p>
+            {% endfor %}
+        </section>
+
+        <!-- PEDIDOS: prato + quantidade e confirmar -->
+        <aside class="cliente-bloco cliente-pedido">
+            <h2>Seu pedido 🧾</h2>
+            {% if itens_pedido %}
+            <table class="tabela-pedido">
+                <thead>
+                    <tr><th>Prato</th><th>Qtd</th><th>Subtotal</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in itens_pedido %}
+                    <tr>
+                        <td>{{ item.prato.nome }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>R$ {{ item.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="2"><strong>Total</strong></td><td><strong>R$ {{ total|floatformat:2 }}</strong></td></tr>
+                </tfoot>
+            </table>
+            <form method="post" action="{% url 'cliente_confirmar' restaurante.username %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-confirmar">Confirmar pedido ({{ total_itens }} {% if total_itens == 1 %}item{% else %}itens{% endif %})</button>
+            </form>
+            {% else %}
+            <p class="pedido-vazio">Nenhum prato adicionado ainda. Use o botão <strong>+</strong> no cardápio.</p>
+            {% endif %}
+        </aside>
+
+    </div>
+{% endif %}
+{% endblock %}

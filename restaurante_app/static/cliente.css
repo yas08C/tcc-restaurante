@@ -1,0 +1,88 @@
+/* Interface do CLIENTE (feita para celular primeiro) */
+
+.cliente-topo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background-color: var(--cinza-escuro);
+    border-bottom: 2px solid var(--vermelho-principal);
+}
+.cliente-logo { height: 36px; }
+.cliente-nome { font-weight: bold; color: var(--salmao); font-size: 1.2rem; }
+
+.cliente-container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+
+.cliente-cabecalho {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.cliente-mesa-atual { color: var(--cinza-claro); }
+.cliente-mesa-atual a { color: var(--salmao); }
+
+.cliente-bloco {
+    background-color: var(--cinza-escuro);
+    border: 1px solid var(--cinza-borda);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+/* escolha de mesa */
+.grade-mesas {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px;
+}
+.btn-mesa {
+    padding: 14px 0; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    border: 1px solid var(--salmao); border-radius: 8px;
+    background-color: var(--cinza-medio); color: var(--branco-ornamentado);
+}
+.btn-mesa:hover { background-color: var(--vermelho-principal); }
+
+/* layout: celular = uma coluna; computador = cardápio + pedido lado a lado */
+.cliente-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 800px) {
+    .cliente-layout { grid-template-columns: 2fr 1fr; align-items: start; }
+    .cliente-pedido { position: sticky; top: 16px; }
+}
+
+/* pratos */
+.prato-card {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--cinza-borda);
+}
+.prato-card:last-child { border-bottom: none; }
+.prato-card h3 { margin: 0 0 4px; color: var(--branco-ornamentado); }
+.prato-preco { margin: 0; color: var(--salmao); font-weight: bold; }
+.prato-card.indisponivel { opacity: 0.55; }
+.prato-indisponivel { color: #e05c5c; font-weight: bold; }
+
+.prato-acoes { display: flex; align-items: center; gap: 10px; }
+.prato-acoes form { margin: 0; }
+.prato-qtd { min-width: 22px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+
+.btn-qtd {
+    width: 40px; height: 40px; font-size: 1.4rem; line-height: 1; cursor: pointer;
+    border: 1px solid var(--salmao); border-radius: 50%;
+    background-color: var(--cinza-medio); color: var(--branco-ornamentado);
+}
+.btn-qtd.btn-mais { background-color: var(--vermelho-principal); border-color: var(--vermelho-principal); }
+.btn-qtd:hover { filter: brightness(1.25); }
+
+/* pedido */
+.cliente-pedido h2 { margin-top: 0; color: var(--salmao); }
+.tabela-pedido { width: 100%; margin-bottom: 14px; }
+.tabela-pedido th, .tabela-pedido td { text-align: left; padding: 8px; }
+.tabela-pedido td:last-child, .tabela-pedido th:last-child { text-align: right; }
+.pedido-vazio { color: var(--cinza-claro); }
+
+.btn-confirmar {
+    width: 100%; padding: 14px; font-size: 1.05rem; font-weight: bold; cursor: pointer;
+    border: none; border-radius: 8px; background-color: #2E7D32; color: #FFFFFF;
+}
+.btn-confirmar:hover { background-color: #388E3C; }
+
+.cliente-confirmado { text-align: center; }
+.cliente-confirmado .tabela-pedido { max-width: 460px; margin: 16px auto; }
+
+.cliente-rodape { text-align: center; padding: 16px; color: var(--cinza-claro); font-size: 0.85rem; }

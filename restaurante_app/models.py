@@ -370,3 +370,46 @@ class ItemFichaTecnica(models.Model):
 
     def __str__(self):
         return f'{self.prato.nome}: {self.quantidade_usada} {self.produto.get_unidade_display()} de {self.produto.nome}'
+
+
+class Pedido(models.Model):
+    """Pedido feito pelo CLIENTE dentro do restaurante (interface do cliente).
+    Isolado por restaurante (usuario) — cada restaurante só vê os próprios pedidos."""
+
+    STATUS_CHOICES = [
+        ('recebido', 'Recebido'),
+        ('entregue', 'Entregue'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pedidos')
+    mesa = models.PositiveSmallIntegerField(choices=MESA_CHOICES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='recebido')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f'Pedido #{self.pk} - Mesa {self.mesa}'
+
+    @property
+    def total(self):
+        return sum((item.subtotal for item in self.itens.all()), start=0)
+
+
+class ItemPedido(models.Model):
+    """Um prato e a quantidade pedida. Guarda o nome e o preço do momento do
+    pedido, para o histórico não mudar se o prato for editado ou excluído."""
+
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens')
+    prato = models.ForeignKey(Prato, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_pedido')
+    nome_prato = models.CharField(max_length=120)
+    preco_unitario = models.DecimalField(max_digits=8, decimal_places=2)
+    quantidade = models.PositiveSmallIntegerField(default=1)
+
+    def __str__(self):
+        return f'{self.quantidade}x {self.nome_prato}'
+
+    @property
+    def subtotal(self):
+        return self.preco_unitario * self.quantidade

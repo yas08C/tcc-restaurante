@@ -1,0 +1,29 @@
+{% extends 'cliente_base.html' %}
+{% block title %}Pedido confirmado{% endblock %}
+{% block content %}
+<section class="cliente-bloco cliente-confirmado">
+    <h1>Pedido confirmado! ✅</h1>
+    <p>Pedido <strong>#{{ pedido.pk }}</strong> · Mesa <strong>{{ pedido.mesa }}</strong></p>
+
+    <table class="tabela-pedido">
+        <thead>
+            <tr><th>Prato</th><th>Qtd</th><th>Subtotal</th></tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.nome_prato }}</td>
+                <td>{{ item.quantidade }}</td>
+                <td>R$ {{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><td colspan="2"><strong>Total</strong></td><td><strong>R$ {{ pedido.total|floatformat:2 }}</strong></td></tr>
+        </tfoot>
+    </table>
+
+    <p>Seu pedido foi enviado para a cozinha. Aguarde na mesa!</p>
+    <a href="{% url 'cliente_cardapio' restaurante.username %}" class="btn-confirmar" style="display:inline-block; text-decoration:none; text-align:center;">Fazer novo pedido</a>
+</section>
+{% endblock %}

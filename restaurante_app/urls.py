@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, views_cliente
 
 urlpatterns = [
     # Autenticação
@@ -62,4 +62,16 @@ urlpatterns = [
     path('painel-usuarios/sair/', views.painel_usuarios_logout, name='painel_usuarios_logout'),
     path('painel-usuarios/lista/', views.painel_usuarios_list, name='painel_usuarios_list'),
     path('painel-usuarios/<int:pk>/excluir/', views.painel_usuarios_delete, name='painel_usuarios_delete'),
+
+    # Pedidos recebidos (área do restaurante, exige login)
+    path('pedidos/', views_cliente.pedido_list, name='pedido_list'),
+    path('pedidos/<int:pk>/entregar/', views_cliente.pedido_entregar, name='pedido_entregar'),
+
+    # Interface do CLIENTE (pública, sem login): cardápio + pedido na mesa
+    path('cliente/<str:username>/', views_cliente.cliente_cardapio, name='cliente_cardapio'),
+    path('cliente/<str:username>/mesa/', views_cliente.cliente_mesa, name='cliente_mesa'),
+    path('cliente/<str:username>/adicionar/<int:pk>/', views_cliente.cliente_adicionar, name='cliente_adicionar'),
+    path('cliente/<str:username>/remover/<int:pk>/', views_cliente.cliente_remover, name='cliente_remover'),
+    path('cliente/<str:username>/confirmar/', views_cliente.cliente_confirmar, name='cliente_confirmar'),
+    path('cliente/<str:username>/pedido/<int:pedido_id>/', views_cliente.cliente_pedido_confirmado, name='cliente_pedido_confirmado'),
 ]

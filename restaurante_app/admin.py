@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Produto, Reserva, Fornecedor, ZonaTemperatura, SensorESP32,
-    MovimentacaoEstoque, Prato, ItemFichaTecnica,
+    MovimentacaoEstoque, Prato, ItemFichaTecnica, Pedido, ItemPedido,
 )
 
 admin.site.register(Produto)
@@ -11,6 +11,8 @@ admin.site.register(ZonaTemperatura)
 admin.site.register(MovimentacaoEstoque)
 admin.site.register(Prato)
 admin.site.register(ItemFichaTecnica)
+admin.site.register(Pedido)
+admin.site.register(ItemPedido)
 
 
 @admin.register(SensorESP32)
