@@ -19,7 +19,7 @@
                 <td>{{ f.quantidade_usada }}</td>
                 <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
             </tr>
-            {% if f.errors %}<tr><td colspan="3" style="color:#e05c5c;">{{ f.errors }}</td></tr>{% endif %}
+            {% if f.errors %}<tr><td colspan="3" style="color:#B3261E;">{{ f.errors }}</td></tr>{% endif %}
             {% endfor %}
         </tbody>
     </table>

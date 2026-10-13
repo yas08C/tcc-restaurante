@@ -13,7 +13,7 @@
 {% endif %}
 
 {% for m in resumo_mensal %}
-<div style="margin-bottom: 30px; {% if m.is_mes_atual %}border: 2px solid #d4a94a; border-radius: 6px; padding: 10px;{% endif %}">
+<div style="margin-bottom: 30px; {% if m.is_mes_atual %}border: 2px solid #8B0000; border-radius: 6px; padding: 10px;{% endif %}">
     <h2>
         {{ m.mes_nome }}/{{ m.ano }}
         {% if m.is_mes_atual %}<span class="badge badge-warning">Mês atual</span>{% endif %}
@@ -74,7 +74,7 @@
             <tr>
                 <td><strong>Saldo do mês (receitas − despesas)</strong></td>
                 <td>
-                    <strong style="color: {% if m.saldo < 0 %}#e05c5c{% else %}#7bc47f{% endif %};">
+                    <strong style="color: {% if m.saldo < 0 %}#B3261E{% else %}#2E7D32{% endif %};">
                         R$ {{ m.saldo }}
                     </strong>
                 </td>

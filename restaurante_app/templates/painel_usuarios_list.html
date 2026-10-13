@@ -30,7 +30,7 @@
             <td>{{ usuario.total_produtos }}</td>
             <td>
                 {% if usuario.is_superuser or usuario.is_staff %}
-                    <span style="color:#999;">administrador</span>
+                    <span style="color:#6B5A52;">administrador</span>
                 {% else %}
                     <a href="{% url 'painel_usuarios_delete' usuario.pk %}" class="btn btn-danger">Excluir</a>
                 {% endif %}

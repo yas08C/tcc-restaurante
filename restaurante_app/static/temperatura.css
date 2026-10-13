@@ -13,8 +13,8 @@
 
 /* Cores padrão (sem leitura). Cada status só troca estas duas variáveis. */
 .tabela-zona {
-    --cor: #555555;
-    --cor-escura: #3A3A3A;
+    --cor: #8C8273;
+    --cor-escura: #6B6256;
 
     width: 100%;
     margin-bottom: 0;

@@ -20,7 +20,7 @@
     </details>
 </div>
 
-<p style="margin-bottom: 12px; color:#999;">
+<p style="margin-bottom: 12px; color:#6B5A52;">
     Fluxo: o cliente envia o pedido (<em>Recebido</em>) → você <strong>confirma</strong> (aí o estoque é baixado) → marca como <em>Entregue</em>
     (aí a receita entra no Financeiro). Pedidos podem ser cancelados antes da entrega; se já estavam confirmados, o estoque é devolvido.
 </p>
@@ -51,13 +51,13 @@
             <td>{{ pedido.criado_em|date:"d/m H:i" }}</td>
             <td>
                 {% if pedido.status == 'recebido' %}
-                    <span style="color:#e0b45c;">⏳ Recebido (aguardando confirmação)</span>
+                    <span style="color:#8A5A00;">⏳ Recebido (aguardando confirmação)</span>
                 {% elif pedido.status == 'confirmado' %}
-                    <span style="color:#6fa8dc;">👨‍🍳 Confirmado</span>
+                    <span style="color:#1F5F99;">👨‍🍳 Confirmado</span>
                 {% elif pedido.status == 'entregue' %}
-                    <span style="color:#7bc47f;">✅ Entregue</span>
+                    <span style="color:#2E7D32;">✅ Entregue</span>
                 {% else %}
-                    <span style="color:#e05c5c;">✖ Cancelado</span>
+                    <span style="color:#B3261E;">✖ Cancelado</span>
                 {% endif %}
             </td>
             <td>

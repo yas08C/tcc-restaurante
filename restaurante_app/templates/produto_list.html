@@ -9,9 +9,9 @@
     <a href="{% url 'estoque_historico' %}" class="btn btn-secondary">Histórico de Movimentações</a>
 </div>
 
-<div class="resumo-estoque" style="margin-bottom: 16px; padding: 10px 14px; background: #f4f4f4; border-radius: 6px;">
+<div class="resumo-estoque" style="margin-bottom: 16px; padding: 10px 14px; background: rgba(139,0,0,0.08); border-radius: 6px;">
     <strong>Valor total do estoque:</strong> R$ {{ valor_total_estoque|floatformat:2 }}
-    <span style="color: #666; font-size: 0.9em;">
+    <span style="color: #6B5A52; font-size: 0.9em;">
         (estimado pelo preço da última compra registrada de cada produto)
     </span>
 </div>
@@ -57,7 +57,7 @@
                 {% if valor is not None %}
                     R$ {{ valor|floatformat:2 }}
                 {% else %}
-                    <span style="color:#999;">sem compra registrada</span>
+                    <span style="color:#6B5A52;">sem compra registrada</span>
                 {% endif %}
                 {% endwith %}
             </td>

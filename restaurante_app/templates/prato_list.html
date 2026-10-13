@@ -28,14 +28,14 @@
                 {% for item in info.prato.itens_ficha_tecnica.all %}
                     {{ item.quantidade_usada }} {{ item.produto.get_unidade_display }} de {{ item.produto.nome }}{% if not forloop.last %}, {% endif %}
                 {% empty %}
-                    <span style="color:#999;">sem ficha técnica</span>
+                    <span style="color:#6B5A52;">sem ficha técnica</span>
                 {% endfor %}
             </td>
             <td>
                 {% if info.pode_vender %}
-                    <span style="color:#7bc47f;">✅ pode vender</span>
+                    <span style="color:#2E7D32;">✅ pode vender</span>
                 {% else %}
-                    <span style="color:#e05c5c;">⚠️ estoque insuficiente</span>
+                    <span style="color:#B3261E;">⚠️ estoque insuficiente</span>
                 {% endif %}
             </td>
             <td>

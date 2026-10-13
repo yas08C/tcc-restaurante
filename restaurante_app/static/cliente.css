@@ -1,45 +1,57 @@
-/* Interface do CLIENTE (feita para celular primeiro) */
+/* Interface do CLIENTE (celular primeiro) — mesmo estilo do slide */
 
 .cliente-topo {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     padding: 12px 16px;
-    background-color: var(--cinza-escuro);
-    border-bottom: 2px solid var(--vermelho-principal);
+    background-color: var(--vermelho-fundo);
+    border-bottom: 3px solid var(--creme);
+    position: relative;
+    z-index: 2;
 }
-.cliente-logo { height: 36px; }
-.cliente-nome { font-weight: bold; color: var(--salmao); font-size: 1.2rem; }
+.cliente-logo { height: 42px; }
+.cliente-nome {
+    font-family: var(--fonte-titulo);
+    color: var(--creme);
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-left: 12px;
+    border-left: 2px solid var(--creme);
+}
 
-.cliente-container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+.cliente-container { max-width: 1000px; margin: 0 auto; padding: 16px; position: relative; z-index: 1; }
 
 .cliente-cabecalho {
     display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--creme);
 }
-.cliente-mesa-atual { color: var(--cinza-claro); }
-.cliente-mesa-atual a { color: var(--salmao); }
+.cliente-cabecalho h1, .cliente-cabecalho h2 { color: var(--creme); }
+.cliente-cabecalho h1::after, .cliente-cabecalho h2::after { background: var(--creme); }
+.cliente-mesa-atual { color: var(--creme); }
+.cliente-mesa-atual a { color: var(--creme); font-weight: 700; }
 
 .cliente-bloco {
-    background-color: var(--cinza-escuro);
-    border: 1px solid var(--cinza-borda);
-    border-radius: 10px;
-    padding: 16px;
+    background-color: var(--creme);
+    color: var(--tinta);
+    border-radius: 6px;
+    padding: 18px;
     margin-bottom: 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* escolha de mesa */
-.grade-mesas {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px;
-}
+.grade-mesas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
 .btn-mesa {
-    padding: 14px 0; font-size: 1.1rem; font-weight: bold; cursor: pointer;
-    border: 1px solid var(--salmao); border-radius: 8px;
-    background-color: var(--cinza-medio); color: var(--branco-ornamentado);
+    padding: 14px 0; font-family: var(--fonte-titulo); font-size: 1.3rem; cursor: pointer;
+    border: 2px solid var(--vermelho-fundo); border-radius: 6px;
+    background-color: transparent; color: var(--vermelho-fundo);
+    transition: background-color .2s ease, color .2s ease;
 }
-.btn-mesa:hover { background-color: var(--vermelho-principal); }
+.btn-mesa:hover { background-color: var(--vermelho-fundo); color: var(--creme); }
 
-/* layout: celular = uma coluna; computador = cardápio + pedido lado a lado */
+/* layout */
 .cliente-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 800px) {
     .cliente-layout { grid-template-columns: 2fr 1fr; align-items: start; }
@@ -49,40 +61,41 @@
 /* pratos */
 .prato-card {
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    padding: 12px 0; border-bottom: 1px solid var(--cinza-borda);
+    padding: 12px 0; border-bottom: 1px solid var(--creme-borda);
 }
 .prato-card:last-child { border-bottom: none; }
-.prato-card h3 { margin: 0 0 4px; color: var(--branco-ornamentado); }
-.prato-preco { margin: 0; color: var(--salmao); font-weight: bold; }
+.prato-card h3 { margin: 0 0 4px; color: var(--vermelho-fundo); }
+.prato-preco { margin: 0; color: var(--tinta); font-weight: 800; }
 .prato-card.indisponivel { opacity: 0.55; }
-.prato-indisponivel { color: #e05c5c; font-weight: bold; }
+.prato-indisponivel { color: #B3261E; font-weight: 800; }
 
 .prato-acoes { display: flex; align-items: center; gap: 10px; }
 .prato-acoes form { margin: 0; }
-.prato-qtd { min-width: 22px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+.prato-qtd { min-width: 22px; text-align: center; font-weight: 800; font-size: 1.1rem; }
 
 .btn-qtd {
     width: 40px; height: 40px; font-size: 1.4rem; line-height: 1; cursor: pointer;
-    border: 1px solid var(--salmao); border-radius: 50%;
-    background-color: var(--cinza-medio); color: var(--branco-ornamentado);
+    border: 2px solid var(--vermelho-fundo); border-radius: 50%;
+    background-color: transparent; color: var(--vermelho-fundo);
 }
-.btn-qtd.btn-mais { background-color: var(--vermelho-principal); border-color: var(--vermelho-principal); }
-.btn-qtd:hover { filter: brightness(1.25); }
+.btn-qtd.btn-mais { background-color: var(--vermelho-fundo); color: var(--creme); }
+.btn-qtd:hover { filter: brightness(1.2); }
 
 /* pedido */
-.cliente-pedido h2 { margin-top: 0; color: var(--salmao); }
+.cliente-pedido h2 { margin-top: 0; }
 .tabela-pedido { width: 100%; margin-bottom: 14px; }
 .tabela-pedido th, .tabela-pedido td { text-align: left; padding: 8px; }
 .tabela-pedido td:last-child, .tabela-pedido th:last-child { text-align: right; }
-.pedido-vazio { color: var(--cinza-claro); }
+.pedido-vazio { color: var(--tinta-suave); }
 
 .btn-confirmar {
-    width: 100%; padding: 14px; font-size: 1.05rem; font-weight: bold; cursor: pointer;
-    border: none; border-radius: 8px; background-color: #2E7D32; color: #FFFFFF;
+    width: 100%; padding: 14px; font-family: var(--fonte-label); font-size: 1.1rem;
+    letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+    border: none; border-radius: 6px; background-color: var(--vermelho-fundo); color: var(--creme);
 }
-.btn-confirmar:hover { background-color: #388E3C; }
+.btn-confirmar:hover { background-color: var(--vermelho-hover); }
 
 .cliente-confirmado { text-align: center; }
 .cliente-confirmado .tabela-pedido { max-width: 460px; margin: 16px auto; }
 
-.cliente-rodape { text-align: center; padding: 16px; color: var(--cinza-claro); font-size: 0.85rem; }
+.cliente-rodape { text-align: center; padding: 16px; color: var(--creme); font-size: 0.85rem; position: relative; z-index: 1; }
