@@ -1,19 +1,29 @@
 <style>
     .campo-senha { position: relative; }
-    .campo-senha input { padding-right: 78px; }
+    .campo-senha input { padding-right: 100px; }
     .campo-senha .btn-olho {
         position: absolute;
-        right: 6px;
-        top: 6px;
-        padding: 4px 10px;
-        font-size: 0.8rem;
+        right: 5px;
+        top: 5px;
+        height: 34px;
+        min-width: 84px;
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--fonte-label);
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
         cursor: pointer;
-        border: 1px solid var(--vermelho-fundo);
+        border: 2px solid var(--vermelho-fundo);
         border-radius: 4px;
         background-color: var(--vermelho-fundo);
-        color: var(--creme);
+        color: #fff;
     }
-    .campo-senha .btn-olho:hover { background-color: var(--vermelho-hover); }
+    .campo-senha .btn-olho:hover { background-color: var(--vermelho-hover); border-color: var(--vermelho-hover); }
 </style>
 <script>
     // Adiciona o botão "Mostrar/Ocultar" em todo campo de senha da página.

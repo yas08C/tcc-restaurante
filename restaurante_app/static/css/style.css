@@ -237,6 +237,18 @@ a:hover { color: var(--vermelho-hover); }
 .tab-card h3 { color: var(--creme); margin-bottom: 8px; }
 .tab-card p { font-size: 0.9rem; }
 
+/* Links sobre fundo vermelho (cards, rodapé, cliente): brancos */
+.tab-card a, .tab-card a:visited,
+.footer a, .footer a:visited,
+.cliente-cabecalho a, .cliente-mesa-atual a {
+    color: var(--branco-puro);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.tab-card a:hover, .footer a:hover,
+.cliente-cabecalho a:hover, .cliente-mesa-atual a:hover { color: var(--creme); }
+.tab-card summary { cursor: pointer; color: var(--branco-puro); }
+
 /* ---------- Mensagens ---------- */
 .messages { list-style: none; margin-bottom: 20px; }
 .messages .message {
@@ -282,31 +294,69 @@ tr.vencido { background-color: rgba(139, 0, 0, 0.18); }
 .estoque-baixo { color: #B3261E; font-weight: 800; }
 .estoque-excedente { color: #8A5A00; font-weight: 800; }
 
-/* ---------- Botões ---------- */
+/* ---------- Botões ----------
+   Todos (<a> e <button>) têm exatamente o mesmo tamanho, fonte e canto.
+   As variações mudam só a cor. */
+:root {
+    --btn-altura: 42px;
+    --btn-largura-min: 150px;
+}
+
 .btn {
-    display: inline-block;
-    padding: 9px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: var(--btn-altura);
+    min-width: var(--btn-largura-min);
+    padding: 0 18px;
     border-radius: 4px;
+    border: 2px solid transparent;
     text-decoration: none;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
     font-family: var(--fonte-label);
     font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    border: 2px solid transparent;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(94, 0, 0, 0.35); }
 .btn:active { transform: translateY(0); }
+.btn:disabled, .btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-.btn-primary { background-color: var(--vermelho-fundo); color: var(--creme); }
-.btn-primary:hover { background-color: var(--vermelho-hover); color: var(--creme); }
+.btn-primary, .btn-success {
+    background-color: var(--vermelho-fundo);
+    border-color: var(--vermelho-fundo);
+    color: var(--branco-puro);
+}
+.btn-primary:hover, .btn-success:hover {
+    background-color: var(--vermelho-hover);
+    border-color: var(--vermelho-hover);
+    color: var(--branco-puro);
+}
 
-.btn-success { background-color: transparent; color: var(--vermelho-fundo); border-color: var(--vermelho-fundo); }
-.btn-success:hover { background-color: var(--vermelho-fundo); color: var(--creme); }
+.btn-secondary {
+    background-color: transparent;
+    border-color: var(--vermelho-fundo);
+    color: var(--vermelho-fundo);
+}
+.btn-secondary:hover { background-color: var(--vermelho-fundo); color: var(--branco-puro); }
 
-.btn-danger { background-color: var(--vermelho-escuro); color: var(--creme); }
-.btn-danger:hover { background-color: #3d0000; color: var(--creme); }
+.btn-danger {
+    background-color: var(--vermelho-escuro);
+    border-color: var(--vermelho-escuro);
+    color: var(--branco-puro);
+}
+.btn-danger:hover { background-color: #3d0000; border-color: #3d0000; color: var(--branco-puro); }
+
+/* botões lado a lado (ex.: Editar / Excluir, grupos de ações) */
+td .btn, .btn + .btn, form + .btn, .btn + form { margin: 2px 6px 2px 0; }
+td form { display: inline-block; margin: 0; vertical-align: middle; }
 
 /* ---------- Formulários ---------- */
 form input, form select, form textarea {
@@ -414,7 +464,8 @@ form label {
 
     table th, table td { padding: 8px 6px; font-size: 0.85rem; white-space: nowrap; }
 
-    .btn { display: block; width: 100%; text-align: center; padding: 12px 16px; margin-bottom: 8px; }
+    .btn { display: flex; width: 100%; margin: 0 0 8px; }
+    td .btn, .btn + .btn { margin: 2px 0 6px; }
     .footer { padding: 16px 10px; font-size: 0.8rem; }
 
     body::before { width: 340px; height: 260px; opacity: 0.4; }
