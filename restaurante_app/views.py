@@ -11,7 +11,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Prefetch
+from django.db.models.functions import Lower
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
@@ -27,7 +28,7 @@ from .forms import (
 )
 from .models import (
     Produto, Reserva, Fornecedor, ZonaTemperatura, SensorESP32, DespesaFixa,
-    Notificacao, MovimentacaoEstoque, Prato, ItemPedido,
+    Notificacao, MovimentacaoEstoque, Prato, ItemFichaTecnica, ItemPedido,
     FAIXA_PADRAO_FREEZER, FAIXA_PADRAO_REFRIGERADO,
 )
 from .seguranca import excedeu_limite, ip_do_cliente, limpar_limite
@@ -584,7 +585,14 @@ def notificacoes_ativas(request):
 
 @login_required
 def prato_list(request):
-    pratos = Prato.objects.filter(usuario=request.user).prefetch_related('itens_ficha_tecnica__produto')
+    pratos = (
+        Prato.objects.filter(usuario=request.user)
+        .order_by(Lower('nome'))
+        .prefetch_related(Prefetch(
+            'itens_ficha_tecnica',
+            queryset=ItemFichaTecnica.objects.select_related('produto').order_by(Lower('produto__nome')),
+        ))
+    )
     pratos = list(pratos)
     pratos_info = [{'prato': p, 'pode_vender': p.pode_ser_vendido()} for p in pratos]
     return render(request, 'prato_list.html', {'pratos_info': pratos_info})

@@ -15,6 +15,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models.functions import Lower
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -96,6 +97,7 @@ def cliente_cardapio(request, slug):
 
     pratos = (
         Prato.objects.filter(usuario=restaurante, ativo=True)
+        .order_by(Lower('nome'))
         .prefetch_related('itens_ficha_tecnica__produto')
     )
     pratos_info = []

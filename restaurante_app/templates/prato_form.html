@@ -12,19 +12,175 @@
         <thead>
             <tr><th>Produto</th><th>Quantidade usada</th><th>Remover</th></tr>
         </thead>
-        <tbody>
+        <tbody id="ficha-tbody">
             {% for f in formset %}
-            <tr>
-                <td>{{ f.produto }}{{ f.id }}</td>
+            <tr class="ficha-row" data-salvo="{% if f.instance.pk %}1{% else %}0{% endif %}">
+                <td>
+                    <div class="ficha-filtros">
+                        <select class="filtro-categoria" aria-label="Filtrar por categoria"></select>
+                        <input type="search" class="filtro-nome" placeholder="Buscar produto ou categoria..." aria-label="Buscar produto">
+                    </div>
+                    {{ f.produto }}{{ f.id }}
+                </td>
                 <td>{{ f.quantidade_usada }}</td>
-                <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+                <td>
+                    {% if f.instance.pk %}<span style="display:none;">{{ f.DELETE }}</span>{% endif %}
+                    <button type="button" class="btn btn-danger btn-remover-ingrediente">Remover</button>
+                </td>
             </tr>
             {% if f.errors %}<tr><td colspan="3" style="color:#B3261E;">{{ f.errors }}</td></tr>{% endif %}
             {% endfor %}
         </tbody>
     </table>
 
+    <p>
+        <button type="button" id="btn-add-ingrediente" class="btn btn-primary">+ Adicionar ingrediente</button>
+    </p>
+
+    {# Modelo de uma linha em branco, copiado pelo JavaScript ao clicar em "Adicionar ingrediente" #}
+    <template id="ficha-empty-row">
+        <tr class="ficha-row" data-salvo="0">
+            <td>
+                <div class="ficha-filtros">
+                    <select class="filtro-categoria" aria-label="Filtrar por categoria"></select>
+                    <input type="search" class="filtro-nome" placeholder="Buscar produto ou categoria..." aria-label="Buscar produto">
+                </div>
+                {{ formset.empty_form.produto }}{{ formset.empty_form.id }}
+            </td>
+            <td>{{ formset.empty_form.quantidade_usada }}</td>
+            <td><button type="button" class="btn btn-danger btn-remover-ingrediente">Remover</button></td>
+        </tr>
+    </template>
+
     <button type="submit" class="btn btn-success">Salvar</button>
     <a href="{% url 'prato_list' %}" class="btn btn-primary">Cancelar</a>
 </form>
+
+<style>
+    .ficha-filtros { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    .ficha-filtros select, .ficha-filtros input { flex: 1 1 140px; min-width: 0; }
+</style>
+
+<script>
+(function () {
+    var prefixo = '{{ formset.prefix }}';
+    var totalInput = document.getElementById('id_' + prefixo + '-TOTAL_FORMS');
+    var tbody = document.getElementById('ficha-tbody');
+    var modelo = document.getElementById('ficha-empty-row');
+
+    // Texto sem acento e em minúsculas, para a busca não depender de acentos.
+    function normalizar(t) {
+        return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+    function ordenar(a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); }
+
+    // Reconstrói a lista de produtos da linha conforme a categoria e a busca,
+    // agrupada por categoria e em ordem alfabética.
+    function filtrar(linha) {
+        var sel = linha.querySelector('select[name$="-produto"]');
+        var cat = linha.querySelector('.filtro-categoria').value;
+        var termo = normalizar(linha.querySelector('.filtro-nome').value.trim());
+        var atual = sel.value;
+
+        var grupos = {};
+        sel._todas.forEach(function (p) {
+            var passa = (!cat || p.cat === cat) &&
+                        (!termo || normalizar(p.text).indexOf(termo) > -1 || normalizar(p.catNome).indexOf(termo) > -1);
+            if (passa || p.value === atual) {   // o produto já escolhido nunca some
+                (grupos[p.catNome] = grupos[p.catNome] || []).push(p);
+            }
+        });
+
+        sel.innerHTML = '';
+        var vazio = document.createElement('option');
+        vazio.value = '';
+        vazio.textContent = sel._textoVazio;
+        sel.appendChild(vazio);
+
+        var nomes = Object.keys(grupos).sort(ordenar);
+        nomes.forEach(function (nome) {
+            var og = document.createElement('optgroup');
+            og.label = nome;
+            grupos[nome].sort(function (a, b) { return ordenar(a.text, b.text); }).forEach(function (p) {
+                var o = document.createElement('option');
+                o.value = p.value;
+                o.textContent = p.text;
+                o.dataset.categoria = p.cat;
+                o.dataset.categoriaNome = p.catNome;
+                og.appendChild(o);
+            });
+            sel.appendChild(og);
+        });
+        if (!nomes.length) {
+            var nada = document.createElement('option');
+            nada.disabled = true;
+            nada.textContent = '(nenhum produto encontrado)';
+            sel.appendChild(nada);
+        }
+        sel.value = atual;
+    }
+
+    // Guarda a lista completa de produtos da linha e monta o filtro de categorias.
+    function iniciarLinha(linha) {
+        var sel = linha.querySelector('select[name$="-produto"]');
+        if (!sel || sel._todas) return;
+
+        var opcaoVazia = sel.querySelector('option[value=""]');
+        sel._textoVazio = opcaoVazia ? opcaoVazia.textContent : '---------';
+        sel._todas = Array.prototype.filter.call(sel.options, function (o) { return o.value !== ''; })
+            .map(function (o) {
+                return {
+                    value: o.value, text: o.textContent,
+                    cat: o.dataset.categoria || 'outros',
+                    catNome: o.dataset.categoriaNome || 'Outros'
+                };
+            });
+
+        var categorias = {};
+        sel._todas.forEach(function (p) { categorias[p.cat] = p.catNome; });
+        var filtroCat = linha.querySelector('.filtro-categoria');
+        filtroCat.innerHTML = '<option value="">Todas as categorias</option>';
+        Object.keys(categorias)
+            .sort(function (a, b) { return ordenar(categorias[a], categorias[b]); })
+            .forEach(function (chave) {
+                var o = document.createElement('option');
+                o.value = chave;
+                o.textContent = categorias[chave];
+                filtroCat.appendChild(o);
+            });
+
+        filtroCat.addEventListener('change', function () { filtrar(linha); });
+        linha.querySelector('.filtro-nome').addEventListener('input', function () { filtrar(linha); });
+        filtrar(linha);
+    }
+
+    tbody.querySelectorAll('tr.ficha-row').forEach(iniciarLinha);
+
+    // Adicionar ingrediente: copia a linha em branco e ajusta o índice do formulário.
+    document.getElementById('btn-add-ingrediente').addEventListener('click', function () {
+        var indice = parseInt(totalInput.value, 10);
+        var html = modelo.innerHTML.replace(/__prefix__/g, indice);
+        tbody.insertAdjacentHTML('beforeend', html);
+        totalInput.value = indice + 1;
+        iniciarLinha(tbody.lastElementChild);
+    });
+
+    // Remover ingrediente (vale para linhas já salvas e para as novas).
+    tbody.addEventListener('click', function (e) {
+        if (!e.target.classList.contains('btn-remover-ingrediente')) return;
+        var linha = e.target.closest('tr.ficha-row');
+
+        if (linha.dataset.salvo === '1') {
+            // Já existe no banco: marca DELETE para o Django excluir ao salvar.
+            var del = linha.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (del) del.checked = true;
+        } else {
+            // Linha nova: limpa os campos; o Django ignora formulário vazio.
+            linha.querySelectorAll('select[name$="-produto"]').forEach(function (s) { s.value = ''; });
+            linha.querySelectorAll('input[type="number"]').forEach(function (i) { i.value = ''; });
+        }
+        linha.style.display = 'none';
+    });
+})();
+</script>
 {% endblock %}

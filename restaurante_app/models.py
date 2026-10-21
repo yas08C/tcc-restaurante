@@ -465,8 +465,9 @@ class ItemFichaTecnica(models.Model):
     prato = models.ForeignKey(Prato, on_delete=models.CASCADE, related_name='itens_ficha_tecnica')
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name='usado_em_pratos')
     quantidade_usada = models.DecimalField(
-        validators=[MinValueValidator(Decimal('0.01'))],
-        help_text='Quantidade deste produto consumida ao preparar 1 unidade do prato.', **QTD
+        max_digits=10, decimal_places=3,
+        validators=[MinValueValidator(Decimal('0.001'))],
+        help_text='Quantidade deste produto consumida ao preparar 1 unidade do prato.',
     )
 
     class Meta:

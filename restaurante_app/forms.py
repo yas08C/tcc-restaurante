@@ -3,7 +3,8 @@ from datetime import time
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from django.forms import inlineformset_factory
+from django.db.models.functions import Lower
+from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
 from .models import (
@@ -198,15 +199,44 @@ class PratoForm(forms.ModelForm):
         fields = ['nome', 'preco_venda', 'ativo']
 
 
+class ProdutoSelect(forms.Select):
+    """Select de produtos que grava a categoria em cada <option>
+    (data-categoria), para a tela de prato filtrar os ingredientes por categoria."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        produto = getattr(value, 'instance', None)
+        if produto is not None:
+            option['attrs']['data-categoria'] = produto.categoria
+            option['attrs']['data-categoria-nome'] = produto.get_categoria_display()
+        return option
+
+
 class ItemFichaTecnicaForm(forms.ModelForm):
     class Meta:
         model = ItemFichaTecnica
         fields = ['produto', 'quantidade_usada']
+        widgets = {'produto': ProdutoSelect}
 
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
+        produtos = self.fields['produto'].queryset
         if usuario is not None:
-            self.fields['produto'].queryset = Produto.objects.filter(usuario=usuario)
+            produtos = Produto.objects.filter(usuario=usuario)
+        # Produtos sempre em ordem alfabética (sem diferenciar maiúsculas de minúsculas)
+        self.fields['produto'].queryset = produtos.order_by(Lower('nome'))
+
+
+class BaseFichaTecnicaFormSet(BaseInlineFormSet):
+    """Ingredientes já salvos do prato aparecem em ordem alfabética."""
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('queryset') is None:
+            kwargs['queryset'] = (
+                ItemFichaTecnica.objects.select_related('produto')
+                .order_by(Lower('produto__nome'), 'pk')
+            )
+        super().__init__(*args, **kwargs)
 
 
 # Formset para cadastrar/editar os insumos de um prato junto com o próprio prato.
@@ -214,6 +244,7 @@ ItemFichaTecnicaFormSet = inlineformset_factory(
     Prato,
     ItemFichaTecnica,
     form=ItemFichaTecnicaForm,
+    formset=BaseFichaTecnicaFormSet,
     extra=3,
     can_delete=True,
 )
