@@ -54,10 +54,7 @@ def login_view(request):
         messages.error(request, 'Usuário ou senha incorretos.')
     else:
         form = AuthenticationForm()
-       return render(request, 'prato_list.html', {
-        'pratos_info': pratos_info,
-        'slug_cliente': perfil_de(request.user).slug_publico,
-    })
+    return render(request, 'login.html', {'form': form})
 
 
 @require_POST
@@ -598,7 +595,10 @@ def prato_list(request):
     )
     pratos = list(pratos)
     pratos_info = [{'prato': p, 'pode_vender': p.pode_ser_vendido()} for p in pratos]
-    return render(request, 'prato_list.html', {'pratos_info': pratos_info})
+    return render(request, 'prato_list.html', {
+        'pratos_info': pratos_info,
+        'slug_cliente': perfil_de(request.user).slug_publico,
+    })
 
 
 @login_required
