@@ -29,7 +29,7 @@ from .forms import (
 from .models import (
     Produto, Reserva, Fornecedor, ZonaTemperatura, SensorESP32, DespesaFixa,
     Notificacao, MovimentacaoEstoque, Prato, ItemFichaTecnica, ItemPedido,
-    FAIXA_PADRAO_FREEZER, FAIXA_PADRAO_REFRIGERADO,
+    FAIXA_PADRAO_FREEZER, FAIXA_PADRAO_REFRIGERADO, perfil_de,
 )
 from .seguranca import excedeu_limite, ip_do_cliente, limpar_limite
 from .utils import verificar_alertas_estoque
@@ -54,7 +54,10 @@ def login_view(request):
         messages.error(request, 'Usuário ou senha incorretos.')
     else:
         form = AuthenticationForm()
-    return render(request, 'login.html', {'form': form})
+       return render(request, 'prato_list.html', {
+        'pratos_info': pratos_info,
+        'slug_cliente': perfil_de(request.user).slug_publico,
+    })
 
 
 @require_POST
